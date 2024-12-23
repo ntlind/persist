@@ -27,15 +27,41 @@ struct Answers: Codable {
 struct ContentView: View {
     @State private var cards: [Card] = []
     @State private var isLoading = true
+    @State private var selectedTag: String = "All"
+
+    private var uniqueTags: [String] {
+        var tags = Set<String>()
+        cards.forEach { card in
+            tags.formUnion(card.tags)
+        }
+        let allTags = ["All"] + Array(tags).sorted()
+        print("Available tags: \(allTags)")
+        return allTags
+    }
+
+    private var filteredCards: [Card] {
+        if selectedTag == "All" {
+            return cards
+        }
+        return cards.filter { $0.tags.contains(selectedTag) }
+    }
 
     var body: some View {
         VStack {
             if isLoading {
                 ProgressView()
             } else {
+                Picker("Select Tag", selection: $selectedTag) {
+                    ForEach(uniqueTags, id: \.self) { tag in
+                        Text(tag)
+                    }
+                }
+                .pickerStyle(.menu)
+                .padding()
+
                 ScrollView {
                     LazyVStack(alignment: .leading) {
-                        ForEach(cards) { card in
+                        ForEach(filteredCards) { card in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(card.front)
                                     .font(.headline)
