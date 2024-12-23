@@ -2,8 +2,8 @@ import SwiftUI
 
 struct Card: Codable, Identifiable {
     let id = UUID()
-    let front: String
-    let back: String
+    var front: String
+    var back: String
     let tags: [String]
     let lastAsked: String
     let nextReview: String
@@ -74,7 +74,6 @@ struct ContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Breadcrumb
             HStack(spacing: 4) {
                 Button(action: {
                     selectedTag = nil
@@ -104,7 +103,6 @@ struct ContentView: View {
             }
             .padding(.horizontal)
 
-            // Main Content
             if let selectedTag = selectedTag {
                 let formattedTag =
                     selectedTag
@@ -154,14 +152,17 @@ struct ContentView: View {
     }
 }
 
-// New view for displaying cards of a specific tag
 struct TagDetailView: View {
     let cards: [Card]
     @State private var currentIndex = 0
     @State private var isBackVisible = false
     @State private var localCards: [Card]
-    @State private var pendingAnswer: String? = nil  // "correct" or "incorrect"
+    @State private var pendingAnswer: String? = nil
     @FocusState private var isFocused: Bool
+    @FocusState private var keyboardFocused: Bool
+    @State private var isEditing = false
+    @State private var editTextFront = ""
+    @State private var editTextBack = ""
 
     init(cards: [Card]) {
         self.cards = cards
@@ -172,143 +173,168 @@ struct TagDetailView: View {
         VStack(spacing: 0) {
             if !cards.isEmpty {
                 let card = localCards[currentIndex]
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(card.front)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if isEditing {
+                            TextField("Front", text: $editTextFront)
+                                .textFieldStyle(.plain)
+                                .font(.headline)
+                        } else {
+                            Text(card.front)
+                                .font(.headline)
+                        }
 
-                    if isBackVisible {
-                        Button(action: {
-                            isBackVisible = false
-                        }) {
-                            Text(card.back)
+                        Spacer()
+
+                        if isEditing {
+                            TextEditor(text: $editTextBack)
                                 .font(.subheadline)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .keyboardShortcut(.space, modifiers: [])
-
-                        Button(action: {
-                            isBackVisible = false
-                        }) {
-                            EmptyView()
-                        }
-                        .keyboardShortcut("w", modifiers: [])
-                        .opacity(0)
-                    } else {
-                        Button(action: {
-                            isBackVisible = true
-                            pendingAnswer = "correct"
-                        }) {
-                            Text("Press space to reveal answer")
-                                .italic()
-                                .foregroundColor(.gray)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .keyboardShortcut(.space, modifiers: [])
-
-                        Button(action: {
-                            isBackVisible = true
-                            pendingAnswer = "incorrect"
-                        }) {
-                            EmptyView()
-                        }
-                        .keyboardShortcut("w", modifiers: [])
-                        .opacity(0)
-
-                        Button(action: {
-                            localCards[currentIndex].retired.toggle()
-                            // TODO: Add API call to update retired status
-                        }) {
-                            EmptyView()
-                        }
-                        .keyboardShortcut("s", modifiers: [])
-                        .opacity(0)
-                    }
-
-                    HStack {
-                        VStack(alignment: .leading) {
-                            HStack {
-                                Text("Stats:")
-                                    .fontWeight(.bold)
-                                Text(
-                                    "✓\(card.answers.correct) ⚠️\(card.answers.partial) ✗\(card.answers.incorrect)"
-                                )
+                                .scrollContentBackground(.hidden)
+                                .background(Color.clear)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .multilineTextAlignment(.leading)
+                                .padding(.horizontal, -5)
+                                .focused($keyboardFocused)
+                                .onAppear {
+                                    keyboardFocused = true
+                                }
+                        } else {
+                            if !isBackVisible {
+                                Text("Press space to reveal answer")
+                                    .italic()
+                                    .foregroundColor(.gray)
+                            } else {
+                                ScrollView {
+                                    Text(card.back)
+                                        .font(.subheadline)
+                                        .frame(
+                                            maxWidth: .infinity,
+                                            alignment: .topLeading
+                                        )
+                                        .multilineTextAlignment(.leading)
+                                        .padding(.horizontal, 0)
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
-                            .font(.caption)
-                            Text("Last reviewed: \(card.lastAsked)")
-                                .font(.caption)
-                            Text("Next review: \(card.nextReview)")
-                                .font(.caption)
                         }
                         Spacer()
-                        if card.retired {
-                            HStack(spacing: 4) {
-                                Image(systemName: "xmark.circle")
-                                Text("Retired")
-                            }
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        }
+                        EmptyView()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .overlay(
+                        Button(action: {
+                            if isEditing {
+                                localCards[currentIndex].front = editTextFront
+                                localCards[currentIndex].back = editTextBack
+                            } else {
+                                let card = localCards[currentIndex]
+                                editTextFront = card.front
+                                editTextBack = card.back
+                            }
+                            isEditing = !isEditing
+                        }) {
+                            EmptyView()
+                        }
+                        .keyboardShortcut("e", modifiers: [])
+                        .opacity(0)
+                    )
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding()
                 .background(Color.gray.opacity(0.2))
                 .cornerRadius(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                // Navigation arrows and counter
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isEditing ? Color.orange : Color.clear, lineWidth: 2)
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 HStack {
+                    if card.retired {
+                        Image(systemName: "xmark.circle")
+                            .foregroundColor(.white)
+                            .font(.system(size: 20))
+                    } else {
+                        Image(systemName: "xmark.circle")
+                            .foregroundColor(.white)
+                            .font(.system(size: 20))
+                            .opacity(0)
+                    }
+                    Spacer()
+                    HStack {
+                        Button(action: {
+                            if currentIndex > 0 {
+                                saveEditsIfNeeded()
+                                currentIndex -= 1
+                                isBackVisible = false
+                                isEditing = false
+                            }
+                        }) {
+                            Image(systemName: "arrow.left")
+                                .foregroundColor(.white)
+                                .opacity(currentIndex > 0 ? 1 : 0.3)
+                        }
+                        .keyboardShortcut("a", modifiers: [])
+                        .buttonStyle(.plain)
+                        .onHover { isHovered in
+                            if currentIndex > 0 && isHovered {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.arrow.set()
+                            }
+                        }
+
+                        Text("\(currentIndex + 1) of \(cards.count)")
+                            .font(.caption)
+                            .padding(.horizontal, 16)
+
+                        Button(action: {
+                            if currentIndex < cards.count - 1 {
+                                saveEditsIfNeeded()
+                                applyPendingAnswer()
+                                currentIndex += 1
+                                isBackVisible = false
+                                isEditing = false
+                            }
+                        }) {
+                            Image(systemName: "arrow.right")
+                                .foregroundColor(.white)
+                                .opacity(currentIndex < cards.count - 1 ? 1 : 0.3)
+                        }
+                        .keyboardShortcut("d", modifiers: [])
+                        .buttonStyle(.plain)
+                        .onHover { isHovered in
+                            if currentIndex < cards.count - 1 && isHovered {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.arrow.set()
+                            }
+                        }
+                    }
                     Spacer()
                     Button(action: {
-                        if currentIndex > 0 {
-                            currentIndex -= 1
-                            isBackVisible = false
+                        if isEditing {
+                            localCards[currentIndex].front = editTextFront
+                            localCards[currentIndex].back = editTextBack
+                        } else {
+                            let card = localCards[currentIndex]
+                            editTextFront = card.front
+                            editTextBack = card.back
                         }
+                        isEditing = !isEditing
                     }) {
-                        Image(systemName: "arrow.left")
+                        Image(systemName: "pencil.circle")
                             .foregroundColor(.white)
-                            .opacity(currentIndex > 0 ? 1 : 0.3)
+                            .font(.system(size: 20))
                     }
-                    .keyboardShortcut("a", modifiers: [])
                     .buttonStyle(.plain)
                     .onHover { isHovered in
-                        if currentIndex > 0 && isHovered {
+                        if isHovered {
                             NSCursor.pointingHand.push()
                         } else {
                             NSCursor.arrow.set()
                         }
-                    }
-
-                    Text("\(currentIndex + 1) of \(cards.count)")
-                        .font(.caption)
-                        .padding(.horizontal, 16)
-
-                    Button(action: {
-                        if currentIndex < cards.count - 1 {
-                            applyPendingAnswer()
-                            currentIndex += 1
-                            isBackVisible = false
-                        }
-                    }) {
-                        Image(systemName: "arrow.right")
-                            .foregroundColor(.white)
-                            .opacity(currentIndex < cards.count - 1 ? 1 : 0.3)
-                    }
-                    .keyboardShortcut("d", modifiers: [])
-                    .buttonStyle(.plain)
-                    .onHover { isHovered in
-                        if currentIndex < cards.count - 1 && isHovered {
-                            NSCursor.pointingHand.push()
-                        } else {
-                            NSCursor.arrow.set()
-                        }
-                    }
-                    Spacer()
-                }
-                .padding(.vertical)
+                    }.keyboardShortcut(.return, modifiers: [.command])
+                }.padding(.top, 8)
             } else {
                 Text("No cards found for this tag")
             }
@@ -320,6 +346,35 @@ struct TagDetailView: View {
         .contentShape(Rectangle())
         .onTapGesture { isFocused = true }
         .simultaneousGesture(TapGesture())
+
+        ZStack {
+            Button(action: {
+                localCards[currentIndex].retired.toggle()
+            }) {
+            }
+            .keyboardShortcut("s", modifiers: [])
+            .frame(width: 0, height: 0)
+            .contentShape(Rectangle())
+
+            Button(action: {
+                isBackVisible = !isBackVisible
+                pendingAnswer = "incorrect"
+
+            }) {
+            }
+            .keyboardShortcut("w", modifiers: [])
+            .frame(width: 0, height: 0)
+            .contentShape(Rectangle())
+
+            Button(action: {
+                isBackVisible = !isBackVisible
+                pendingAnswer = "correct"
+            }) {
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.space, modifiers: [])
+        }.opacity(0)
+
     }
 
     func applyPendingAnswer() {
@@ -329,12 +384,18 @@ struct TagDetailView: View {
             } else if answer == "incorrect" {
                 localCards[currentIndex].answers.incorrect += 1
             }
-            pendingAnswer = nil  // Reset pending answer
+            pendingAnswer = nil
+        }
+    }
+
+    func saveEditsIfNeeded() {
+        if isEditing {
+            localCards[currentIndex].front = editTextFront
+            localCards[currentIndex].back = editTextBack
         }
     }
 }
 
-// Update TagsView to accept onTagSelected callback
 struct TagsView: View {
     let cards: [Card]
     let isLoading: Bool
@@ -400,9 +461,7 @@ struct TagsView: View {
                             .background(Color.gray.opacity(0.2))
                             .cornerRadius(8)
                             .onTapGesture {
-                                if tag != "All" {
-                                    onTagSelected(tag)
-                                }
+                                onTagSelected(tag)
                             }
                             .onHover { isHovered in
                                 if isHovered {
@@ -428,7 +487,6 @@ extension Font {
     }
 }
 
-// Add this preference key
 struct ViewSizeKey: PreferenceKey {
     static var defaultValue: CGSize = .zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
