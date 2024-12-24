@@ -18,6 +18,7 @@ async def get_cards():
 
 @app.post("/cards")
 async def save_cards(request: Request):
+    print(request)
     try:
         data = await request.json()
         card_processing.save_cards(data)

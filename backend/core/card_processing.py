@@ -165,6 +165,7 @@ def save_cards(cards):
     cursor = conn.cursor()
 
     for card in cards:
+        # Update card content
         cursor.execute(
             """
             UPDATE cards 
@@ -174,6 +175,7 @@ def save_cards(cards):
             (card["front"], card["back"], card["retired"], card["id"]),
         )
 
+        # Update answers
         cursor.execute(
             """
             UPDATE answers 
@@ -187,6 +189,23 @@ def save_cards(cards):
                 card["id"],
             ),
         )
+
+        # Update tags
+        cursor.execute(
+            "DELETE FROM card_tags WHERE card_id = ?", (card["id"],)
+        )
+        for tag in card["tags"]:
+            cursor.execute(
+                "INSERT OR IGNORE INTO tags (name) VALUES (?)", (tag.lower(),)
+            )
+            cursor.execute(
+                "SELECT id FROM tags WHERE name = ?", (tag.lower(),)
+            )
+            tag_id = cursor.fetchone()[0]
+            cursor.execute(
+                "INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)",
+                (card["id"], tag_id),
+            )
 
     conn.commit()
     conn.close()

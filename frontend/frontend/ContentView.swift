@@ -4,9 +4,9 @@ struct Card: Codable, Identifiable {
     let id: Int
     var front: String
     var back: String
-    let tags: [String]
-    let lastAsked: String
-    let nextReview: String
+    var tags: [String]
+    var lastAsked: String
+    var nextReview: String
     var answers: Answers
     var retired: Bool
     var streak: Int
@@ -72,6 +72,7 @@ struct ContentView: View {
     @State private var cards: [Card] = []
     @State private var isLoading = true
     @State private var selectedTag: String? = nil
+    @State private var editTextTags = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -109,7 +110,18 @@ struct ContentView: View {
                     selectedTag
                     .lowercased()
                     .replacingOccurrences(of: " ", with: "_")
-                TagDetailView(cards: cards.filter { $0.tags.contains(formattedTag) })
+                TagDetailView(
+                    cards: cards.filter { card in
+                        let formattedTags = formattedTag.split(separator: ",").map(String.init)
+                        return formattedTags.allSatisfy { tag in
+                            card.tags.contains(tag.trimmingCharacters(in: .whitespaces))
+                        }
+                    },
+                    editTextTags: $editTextTags
+                )
+                .onAppear {
+                    editTextTags = formattedTag
+                }
             } else {
                 TagsView(
                     cards: cards,
@@ -164,10 +176,12 @@ struct TagDetailView: View {
     @State private var isEditing = false
     @State private var editTextFront = ""
     @State private var editTextBack = ""
+    @Binding var editTextTags: String
 
-    init(cards: [Card]) {
+    init(cards: [Card], editTextTags: Binding<String>) {
         self.cards = cards
         self._localCards = State(initialValue: cards)
+        self._editTextTags = editTextTags
     }
 
     var body: some View {
@@ -180,6 +194,11 @@ struct TagDetailView: View {
                             TextField("Front", text: $editTextFront)
                                 .textFieldStyle(.plain)
                                 .font(.headline)
+
+                            TextField("Tags (comma separated)", text: $editTextTags)
+                                .textFieldStyle(.plain)
+                                .font(.caption)
+                                .foregroundColor(.gray)
                         } else {
                             Text(
                                 LocalizedStringKey(
@@ -233,11 +252,16 @@ struct TagDetailView: View {
                             if isEditing {
                                 localCards[currentIndex].front = editTextFront
                                 localCards[currentIndex].back = editTextBack
+                                localCards[currentIndex].tags =
+                                    editTextTags
+                                    .split(separator: ",")
+                                    .map(String.init)
                                 saveEditsIfNeeded()
                             } else {
                                 let card = localCards[currentIndex]
                                 editTextFront = card.front
                                 editTextBack = card.back
+                                editTextTags = card.tags.joined(separator: ", ")
                             }
                             isEditing = !isEditing
                         }) {
@@ -323,11 +347,16 @@ struct TagDetailView: View {
                         if isEditing {
                             localCards[currentIndex].front = editTextFront
                             localCards[currentIndex].back = editTextBack
+                            localCards[currentIndex].tags =
+                                editTextTags
+                                .split(separator: ",")
+                                .map(String.init)
                             saveEditsIfNeeded()
                         } else {
                             let card = localCards[currentIndex]
                             editTextFront = card.front
                             editTextBack = card.back
+                            editTextTags = card.tags.joined(separator: ", ")
                         }
                         isEditing = !isEditing
                     }) {
@@ -401,6 +430,10 @@ struct TagDetailView: View {
         if isEditing {
             localCards[currentIndex].front = editTextFront
             localCards[currentIndex].back = editTextBack
+            localCards[currentIndex].tags =
+                editTextTags
+                .split(separator: ",")
+                .map(String.init)
 
             guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
             var request = URLRequest(url: url)
