@@ -69,66 +69,135 @@ struct MacOSTextField: NSViewRepresentable {
 }
 
 struct ContentView: View {
+    @State private var allCards: [Card] = []
     @State private var cards: [Card] = []
     @State private var isLoading = true
     @State private var selectedTag: String? = nil
     @State private var editTextTags = ""
+    @State private var showingHelp: Bool = false
+    @State private var showingSettings: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 4) {
-                Button(action: {
-                    selectedTag = nil
-                }) {
-                    Text("Your Tags")
-                        .font(.helvetica(size: 12))
-                        .foregroundColor(.white)
-                }
-                .buttonStyle(.plain)
-                .padding(.vertical, 8)
-                .padding(.leading, 8)
-                .onHover { isHovered in
-                    if isHovered {
-                        NSCursor.pointingHand.push()
-                    } else {
-                        NSCursor.pop()
+        ZStack {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    Button(action: {
+                        selectedTag = nil
+                        fetchCards()
+                    }) {
+                        Text("Your Tags")
+                            .font(.helvetica(size: 12))
+                            .foregroundColor(.white)
                     }
-                }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 8)
+                    .padding(.leading, 8)
+                    .onHover { isHovered in
+                        if isHovered {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
 
-                if let tag = selectedTag {
-                    Text(">")
-                        .font(.helvetica(size: 12))
-                    Text(tag)
-                        .font(.helvetica(size: 12))
-                        .padding(.vertical, 8)
+                    if let tag = selectedTag {
+                        Text(">")
+                            .font(.helvetica(size: 12))
+                        Text(tag)
+                            .font(.helvetica(size: 12))
+                            .padding(.vertical, 8)
+                    }
+                    Spacer()
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 20))
+                        .foregroundColor(.white.opacity(0.8))
+                        .onHover { isHovered in
+                            showingHelp = isHovered
+                            if isHovered {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.arrow.set()
+                            }
+                        }
+                        .padding(.trailing, 8)
+                    Button(action: { showingSettings.toggle() }) {
+                        Image(systemName: "gear")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { isHovered in
+                        if isHovered {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.arrow.set()
+                        }
+                    }
+                    .padding(.trailing, 12)
+                }
+                .padding(.horizontal)
+
+                if let selectedTag = selectedTag {
+                    let formattedTag =
+                        selectedTag
+                        .lowercased()
+                        .replacingOccurrences(of: " ", with: "_")
+                    TagDetailView(
+                        cards: cards.filter { card in
+                            let formattedTags = formattedTag.split(separator: ",").map(String.init)
+                            return formattedTags.allSatisfy { tag in
+                                card.tags.contains(tag.trimmingCharacters(in: .whitespaces))
+                            }
+                        },
+                        editTextTags: $editTextTags
+                    )
+                    .onAppear {
+                        editTextTags = formattedTag
+                    }
+                } else {
+                    TagsView(
+                        cards: cards,
+                        isLoading: isLoading,
+                        onTagSelected: { tag in
+                            self.selectedTag = tag
+                        }
+                    )
                 }
             }
-            .padding(.horizontal)
-
-            if let selectedTag = selectedTag {
-                let formattedTag =
-                    selectedTag
-                    .lowercased()
-                    .replacingOccurrences(of: " ", with: "_")
-                TagDetailView(
-                    cards: cards.filter { card in
-                        let formattedTags = formattedTag.split(separator: ",").map(String.init)
-                        return formattedTags.allSatisfy { tag in
-                            card.tags.contains(tag.trimmingCharacters(in: .whitespaces))
-                        }
-                    },
-                    editTextTags: $editTextTags
-                )
-                .onAppear {
-                    editTextTags = formattedTag
-                }
-            } else {
-                TagsView(
-                    cards: cards,
-                    isLoading: isLoading,
-                    onTagSelected: { tag in
-                        self.selectedTag = tag
+            if showingHelp {
+                Color.black.opacity(0.8)
+                    .ignoresSafeArea()
+                KeyboardShortcutsView()
+                    .transition(.opacity)
+            }
+            if showingSettings {
+                Color.black.opacity(0.8)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showingSettings = false
                     }
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Settings")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        Spacer()
+                        Button(action: { showingSettings = false }) {
+                            Image(systemName: "xmark")
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Toggle("Hide Retired Cards", isOn: .constant(false))
+                }
+                .padding()
+                .frame(width: 400)
+                .background(Color.black)
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                 )
             }
         }
@@ -155,6 +224,7 @@ struct ContentView: View {
             do {
                 let decodedCards = try JSONDecoder().decode([Card].self, from: data)
                 DispatchQueue.main.async {
+                    self.allCards = decodedCards
                     self.cards = decodedCards
                     self.isLoading = false
                 }
@@ -188,7 +258,7 @@ struct TagDetailView: View {
         VStack(spacing: 0) {
             if !cards.isEmpty {
                 let card = localCards[currentIndex]
-                VStack(alignment: .leading, spacing: 4) {
+                ZStack(alignment: .topTrailing) {
                     VStack(alignment: .leading, spacing: 4) {
                         if isEditing {
                             TextField("Front", text: $editTextFront)
@@ -202,7 +272,8 @@ struct TagDetailView: View {
                         } else {
                             Text(
                                 LocalizedStringKey(
-                                    card.front.replacingOccurrences(of: "/n", with: ""))
+                                    card.front.replacingOccurrences(
+                                        of: "/n", with: ""))
                             )
                             .font(.headline)
                         }
@@ -223,9 +294,15 @@ struct TagDetailView: View {
                                 }
                         } else {
                             if !isBackVisible {
-                                Text("Press space to reveal answer")
-                                    .italic()
-                                    .foregroundColor(.gray)
+                                VStack {
+                                    Text("Press space to reveal answer")
+                                        .italic()
+                                        .foregroundColor(.gray)
+                                    Spacer()
+                                }
+                                .frame(
+                                    maxWidth: .infinity, maxHeight: .infinity,
+                                    alignment: .topLeading)
                             } else {
                                 ScrollView {
                                     Text(
@@ -233,18 +310,11 @@ struct TagDetailView: View {
                                             card.back.replacingOccurrences(of: "- ", with: "• "))
                                     )
                                     .font(.system(size: 14))
-                                    .frame(
-                                        maxWidth: .infinity,
-                                        alignment: .topLeading
-                                    )
-                                    .multilineTextAlignment(.leading)
-                                    .padding(.horizontal, 0)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
                                 }
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
                         }
-                        Spacer()
-                        EmptyView()
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .overlay(
@@ -281,15 +351,44 @@ struct TagDetailView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 HStack {
-                    if card.retired {
+                    if localCards[currentIndex].retired {
                         Image(systemName: "xmark.circle")
                             .foregroundColor(.white)
                             .font(.system(size: 20))
                     } else {
-                        Image(systemName: "xmark.circle")
-                            .foregroundColor(.white)
-                            .font(.system(size: 20))
-                            .opacity(0)
+                        Button(action: {
+                            if isEditing {
+                                localCards[currentIndex].front = editTextFront
+                                localCards[currentIndex].back = editTextBack
+                                localCards[currentIndex].tags =
+                                    editTextTags
+                                    .split(separator: ",")
+                                    .map(String.init)
+                                saveEditsIfNeeded()
+                            } else {
+                                editTextFront =
+                                    localCards[currentIndex]
+                                    .front
+                                editTextBack =
+                                    localCards[currentIndex]
+                                    .back
+                                editTextTags = localCards[currentIndex]
+                                    .tags.joined(separator: ", ")
+                            }
+                            isEditing = !isEditing
+                        }) {
+                            Image(systemName: "pencil.circle")
+                                .foregroundColor(.white)
+                                .font(.system(size: 20))
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { isHovered in
+                            if isHovered {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.arrow.set()
+                            }
+                        }.keyboardShortcut(.return, modifiers: [.command])
                     }
                     Spacer()
                     HStack {
@@ -315,14 +414,15 @@ struct TagDetailView: View {
                             }
                         }
 
-                        Text("\(currentIndex + 1) of \(cards.count)")
+                        Text("\(currentIndex + 1) of \(localCards.count)")
                             .font(.caption)
                             .padding(.horizontal, 16)
 
                         Button(action: {
                             if currentIndex < cards.count - 1 {
+                                localCards[currentIndex].answers.correct += 1
+                                localCards[currentIndex].streak += 1
                                 saveEditsIfNeeded()
-                                applyPendingAnswer()
                                 currentIndex += 1
                                 isBackVisible = false
                                 isEditing = false
@@ -343,35 +443,10 @@ struct TagDetailView: View {
                         }
                     }
                     Spacer()
-                    Button(action: {
-                        if isEditing {
-                            localCards[currentIndex].front = editTextFront
-                            localCards[currentIndex].back = editTextBack
-                            localCards[currentIndex].tags =
-                                editTextTags
-                                .split(separator: ",")
-                                .map(String.init)
-                            saveEditsIfNeeded()
-                        } else {
-                            let card = localCards[currentIndex]
-                            editTextFront = card.front
-                            editTextBack = card.back
-                            editTextTags = card.tags.joined(separator: ", ")
-                        }
-                        isEditing = !isEditing
-                    }) {
-                        Image(systemName: "pencil.circle")
-                            .foregroundColor(.white)
-                            .font(.system(size: 20))
-                    }
-                    .buttonStyle(.plain)
-                    .onHover { isHovered in
-                        if isHovered {
-                            NSCursor.pointingHand.push()
-                        } else {
-                            NSCursor.arrow.set()
-                        }
-                    }.keyboardShortcut(.return, modifiers: [.command])
+                    Text("Streak: \(localCards[currentIndex].streak)")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .frame(width: 80, alignment: .trailing)
                 }.padding(.top, 8)
             } else {
                 Text("No cards found for this tag")
@@ -395,9 +470,14 @@ struct TagDetailView: View {
             .contentShape(Rectangle())
 
             Button(action: {
-                isBackVisible = !isBackVisible
-                pendingAnswer = "incorrect"
-
+                if currentIndex < localCards.count - 1 {
+                    localCards[currentIndex].answers.incorrect += 1
+                    localCards[currentIndex].streak = 0
+                    saveEditsIfNeeded()
+                    currentIndex += 1
+                    isBackVisible = false
+                    isEditing = false
+                }
             }) {
             }
             .keyboardShortcut("w", modifiers: [])
@@ -406,24 +486,15 @@ struct TagDetailView: View {
 
             Button(action: {
                 isBackVisible = !isBackVisible
-                pendingAnswer = "correct"
             }) {
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.space, modifiers: [])
         }.opacity(0)
 
-    }
-
-    func applyPendingAnswer() {
-        if let answer = pendingAnswer {
-            if answer == "correct" {
-                localCards[currentIndex].answers.correct += 1
-            } else if answer == "incorrect" {
-                localCards[currentIndex].answers.incorrect += 1
-            }
-            pendingAnswer = nil
-        }
+        // .onChange(of: cards) { oldValue, newValue in
+        //     localCards = newValue
+        // }
     }
 
     func saveEditsIfNeeded() {
@@ -434,26 +505,34 @@ struct TagDetailView: View {
                 editTextTags
                 .split(separator: ",")
                 .map(String.init)
+        }
 
-            guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // TODO streak isn't being saved
+        // TODO check that retirement is being saved
+        // TODO make it so you can't edit retired cards
+        guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-            do {
-                let jsonData = try JSONEncoder().encode([localCards[currentIndex]])
-                request.httpBody = jsonData
+        do {
+            let jsonData = try JSONEncoder().encode([localCards[currentIndex]])
+            request.httpBody = jsonData
 
-                URLSession.shared.dataTask(with: request) { data, response, error in
-                    if let error = error {
-                        print("Error saving card: \(error)")
-                        return
-                    }
-                    print("Card saved successfully")
-                }.resume()
-            } catch {
-                print("Error encoding card: \(error)")
-            }
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("Error saving card: \(error)")
+                    return
+                }
+                let timestamp = DateFormatter.localizedString(
+                    from: Date(),
+                    dateStyle: .none,
+                    timeStyle: .medium
+                )
+                print("Card saved successfully at \(timestamp)")
+            }.resume()
+        } catch {
+            print("Error encoding card: \(error)")
         }
     }
 }
@@ -539,6 +618,45 @@ struct TagsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.black)
+    }
+}
+
+struct KeyboardShortcutsView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Keyboard Shortcuts")
+                .font(.headline)
+                .padding(.bottom, 4)
+
+            Group {
+                ShortcutRow(key: "Space", action: "Reveal card")
+                ShortcutRow(key: "D", action: "Correct answer, next card")
+                ShortcutRow(key: "W", action: "Incorrect answer, next card")
+                ShortcutRow(key: "S", action: "Retire card")
+                ShortcutRow(key: "A", action: "Previous card")
+            }
+            .font(.system(size: 14))
+        }
+        .padding()
+        .background(Color.gray.opacity(0.15))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
+struct ShortcutRow: View {
+    let key: String
+    let action: String
+
+    var body: some View {
+        HStack {
+            Text(key)
+                .fontWeight(.medium)
+            Text(action)
+        }
     }
 }
 
