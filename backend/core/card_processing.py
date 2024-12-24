@@ -1,16 +1,88 @@
 import json
 from pathlib import Path
 import polars as pl
+import sqlite3
 
 
 def build_index_from_cards():
     pass
 
 
+def dict_factory(cursor, row):
+    """Convert SQLite rows to dictionaries"""
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
 def load_cards():
-    cards_path = Path(__file__).parent.parent / "data" / "cards.json"
-    with open(cards_path, "r") as f:
-        return json.load(f)
+    """Load all cards from the SQLite database"""
+    db_path = Path(__file__).parent.parent / "data" / "cards.db"
+    conn = sqlite3.connect(db_path)
+
+    # Create a cursor object
+    cursor = conn.cursor()
+
+    print(cursor.fetchall())
+    cursor.execute(
+        """
+    SELECT
+        c.id,
+        c.front,
+        c.back,
+        c.last_asked,
+        c.next_review,
+        c.retired,
+        c.streak,
+        a.correct,
+        a.partial,
+        a.incorrect,
+        GROUP_CONCAT(t.name, ',') as tags
+    FROM cards c
+    JOIN answers a ON c.answers_id = a.id
+    LEFT JOIN card_tags ct ON c.id = ct.card_id
+    LEFT JOIN tags t ON ct.tag_id = t.id
+    GROUP BY c.id
+    """
+    )
+
+    cards = []
+    for row in cursor.fetchall():
+        (
+            id_,
+            front,
+            back,
+            last_asked,
+            next_review,
+            retired,
+            streak,
+            correct,
+            partial,
+            incorrect,
+            tags,
+        ) = row
+        tags = tags.split(",") if tags else []
+
+        card = {
+            "id": id_,
+            "front": front,
+            "back": back,
+            "last_asked": last_asked,
+            "next_review": next_review,
+            "retired": bool(retired),
+            "tags": tags,
+            "answers": {
+                "correct": correct,
+                "partial": partial,
+                "incorrect": incorrect,
+            },
+            "streak": streak,
+        }
+        cards.append(card)
+
+    conn.close()
+    return cards
 
 
 def convert_file_to_cards(
@@ -85,3 +157,37 @@ def load_filtered_cards(
 
     # Convert to Python dictionaries
     return df.to_dicts()
+
+
+def save_cards(cards):
+    db_path = Path(__file__).parent.parent / "data" / "cards.db"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    for card in cards:
+        cursor.execute(
+            """
+            UPDATE cards 
+            SET front = ?, back = ?, retired = ?
+            WHERE id = ?
+        """,
+            (card["front"], card["back"], card["retired"], card["id"]),
+        )
+
+        cursor.execute(
+            """
+            UPDATE answers 
+            SET correct = ?, partial = ?, incorrect = ?
+            WHERE id = (SELECT answers_id FROM cards WHERE id = ?)
+        """,
+            (
+                card["answers"]["correct"],
+                card["answers"]["partial"],
+                card["answers"]["incorrect"],
+                card["id"],
+            ),
+        )
+
+    conn.commit()
+    conn.close()
+    print(f"Successfully updated {len(cards)} cards")

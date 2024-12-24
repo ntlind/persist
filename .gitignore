@@ -1,2 +1,3 @@
 frontend/frontend.xcodeproj/project.xcworkspace/xcuserdata/nthorlind.xcuserdatad/UserInterfaceState.xcuserstate
 frontend/.DS_Store
+*.pyc

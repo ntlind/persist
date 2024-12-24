@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct Card: Codable, Identifiable {
-    let id = UUID()
+    let id: Int
     var front: String
     var back: String
     let tags: [String]
@@ -9,12 +9,13 @@ struct Card: Codable, Identifiable {
     let nextReview: String
     var answers: Answers
     var retired: Bool
+    var streak: Int
 
     enum CodingKeys: String, CodingKey {
-        case front, back, tags
+        case id, front, back, tags, retired, streak
         case lastAsked = "last_asked"
         case nextReview = "next_review"
-        case answers, retired
+        case answers
     }
 }
 
@@ -180,8 +181,11 @@ struct TagDetailView: View {
                                 .textFieldStyle(.plain)
                                 .font(.headline)
                         } else {
-                            Text(card.front)
-                                .font(.headline)
+                            Text(
+                                LocalizedStringKey(
+                                    card.front.replacingOccurrences(of: "/n", with: ""))
+                            )
+                            .font(.headline)
                         }
 
                         Spacer()
@@ -205,14 +209,17 @@ struct TagDetailView: View {
                                     .foregroundColor(.gray)
                             } else {
                                 ScrollView {
-                                    Text(card.back)
-                                        .font(.subheadline)
-                                        .frame(
-                                            maxWidth: .infinity,
-                                            alignment: .topLeading
-                                        )
-                                        .multilineTextAlignment(.leading)
-                                        .padding(.horizontal, 0)
+                                    Text(
+                                        LocalizedStringKey(
+                                            card.back.replacingOccurrences(of: "- ", with: "• "))
+                                    )
+                                    .font(.system(size: 14))
+                                    .frame(
+                                        maxWidth: .infinity,
+                                        alignment: .topLeading
+                                    )
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.horizontal, 0)
                                 }
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
@@ -226,6 +233,7 @@ struct TagDetailView: View {
                             if isEditing {
                                 localCards[currentIndex].front = editTextFront
                                 localCards[currentIndex].back = editTextBack
+                                saveEditsIfNeeded()
                             } else {
                                 let card = localCards[currentIndex]
                                 editTextFront = card.front
@@ -315,6 +323,7 @@ struct TagDetailView: View {
                         if isEditing {
                             localCards[currentIndex].front = editTextFront
                             localCards[currentIndex].back = editTextBack
+                            saveEditsIfNeeded()
                         } else {
                             let card = localCards[currentIndex]
                             editTextFront = card.front
@@ -392,6 +401,26 @@ struct TagDetailView: View {
         if isEditing {
             localCards[currentIndex].front = editTextFront
             localCards[currentIndex].back = editTextBack
+
+            guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            do {
+                let jsonData = try JSONEncoder().encode([localCards[currentIndex]])
+                request.httpBody = jsonData
+
+                URLSession.shared.dataTask(with: request) { data, response, error in
+                    if let error = error {
+                        print("Error saving card: \(error)")
+                        return
+                    }
+                    print("Card saved successfully")
+                }.resume()
+            } catch {
+                print("Error encoding card: \(error)")
+            }
         }
     }
 }
@@ -414,7 +443,6 @@ struct TagsView: View {
                 })
         }
         let allTags = Array(tags).sorted()
-        print("Available tags: \(allTags)")
         return allTags
     }
 
