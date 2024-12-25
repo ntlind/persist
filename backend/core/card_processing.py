@@ -169,10 +169,16 @@ def save_cards(cards):
         cursor.execute(
             """
             UPDATE cards 
-            SET front = ?, back = ?, retired = ?
+            SET front = ?, back = ?, retired = ?, streak = ?
             WHERE id = ?
         """,
-            (card["front"], card["back"], card["retired"], card["id"]),
+            (
+                card["front"],
+                card["back"],
+                card["retired"],
+                card["streak"],
+                card["id"],
+            ),
         )
 
         # Update answers

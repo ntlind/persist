@@ -1,3 +1,6 @@
 frontend/frontend.xcodeproj/project.xcworkspace/xcuserdata/nthorlind.xcuserdatad/UserInterfaceState.xcuserstate
 frontend/.DS_Store
 *.pyc
+backend/core/__pycache__/card_processing.cpython-311.pyc
+backend/core/__pycache__/card_processing.cpython-311.pyc
+backend/__pycache__/main.cpython-311.pyc

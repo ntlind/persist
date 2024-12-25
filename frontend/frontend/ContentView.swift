@@ -319,21 +319,23 @@ struct TagDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .overlay(
                         Button(action: {
-                            if isEditing {
-                                localCards[currentIndex].front = editTextFront
-                                localCards[currentIndex].back = editTextBack
-                                localCards[currentIndex].tags =
-                                    editTextTags
-                                    .split(separator: ",")
-                                    .map(String.init)
-                                saveEditsIfNeeded()
-                            } else {
-                                let card = localCards[currentIndex]
-                                editTextFront = card.front
-                                editTextBack = card.back
-                                editTextTags = card.tags.joined(separator: ", ")
+                            if !localCards[currentIndex].retired {
+                                if isEditing {
+                                    localCards[currentIndex].front = editTextFront
+                                    localCards[currentIndex].back = editTextBack
+                                    localCards[currentIndex].tags =
+                                        editTextTags
+                                        .split(separator: ",")
+                                        .map(String.init)
+                                    saveEditsIfNeeded()
+                                } else {
+                                    let card = localCards[currentIndex]
+                                    editTextFront = card.front
+                                    editTextBack = card.back
+                                    editTextTags = card.tags.joined(separator: ", ")
+                                }
+                                isEditing = !isEditing
                             }
-                            isEditing = !isEditing
                         }) {
                             EmptyView()
                         }
@@ -388,7 +390,7 @@ struct TagDetailView: View {
                             } else {
                                 NSCursor.arrow.set()
                             }
-                        }.keyboardShortcut(.return, modifiers: [.command])
+                        }.keyboardShortcut("e", modifiers: [.command])
                     }
                     Spacer()
                     HStack {
@@ -507,9 +509,6 @@ struct TagDetailView: View {
                 .map(String.init)
         }
 
-        // TODO streak isn't being saved
-        // TODO check that retirement is being saved
-        // TODO make it so you can't edit retired cards
         guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -518,6 +517,11 @@ struct TagDetailView: View {
         do {
             let jsonData = try JSONEncoder().encode([localCards[currentIndex]])
             request.httpBody = jsonData
+
+            // Print JSON as a formatted string
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                print("Sending JSON:", jsonString)
+            }
 
             URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
@@ -629,11 +633,12 @@ struct KeyboardShortcutsView: View {
                 .padding(.bottom, 4)
 
             Group {
-                ShortcutRow(key: "Space", action: "Reveal card")
-                ShortcutRow(key: "D", action: "Correct answer, next card")
-                ShortcutRow(key: "W", action: "Incorrect answer, next card")
-                ShortcutRow(key: "S", action: "Retire card")
-                ShortcutRow(key: "A", action: "Previous card")
+                ShortcutRow(key: "Space:", action: "Reveal card")
+                ShortcutRow(key: "D:", action: "Correct answer, next card")
+                ShortcutRow(key: "W:", action: "Incorrect answer, next card")
+                ShortcutRow(key: "A:", action: "Previous card")
+                ShortcutRow(key: "E:", action: "Edit card. CMD + E to save card.")
+                ShortcutRow(key: "S:", action: "Retire card")
             }
             .font(.system(size: 14))
         }
