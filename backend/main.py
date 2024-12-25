@@ -25,3 +25,21 @@ async def save_cards(request: Request):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/add_cards")
+async def add_cards(request: Request):
+    try:
+        data = await request.json()
+        # Each card should have front, back, and tags
+        for card in data:
+            if not all(k in card for k in ["front", "back", "tags"]):
+                raise HTTPException(
+                    status_code=400, detail="Missing required fields"
+                )
+
+        card_processing.add_cards(data)
+        return {"message": f"Successfully added {len(data)} cards"}
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

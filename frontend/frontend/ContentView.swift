@@ -77,6 +77,12 @@ struct ContentView: View {
     @State private var showingHelp: Bool = false
     @State private var showingSettings: Bool = false
     @State private var hideRetiredCards: Bool = true
+    @State private var showCardCreator: Bool = false
+    @State private var frontBackDelimiter = "=>"
+    @State private var cardDelimiter = "&"
+    @State private var sourceText = ""
+    @State private var parsedCards: [(front: String, back: String)] = []
+    @State private var newCardTags = ""
 
     var body: some View {
         ZStack {
@@ -123,6 +129,21 @@ struct ContentView: View {
                         .padding(.trailing, 8)
                     Button(action: { showingSettings.toggle() }) {
                         Image(systemName: "gear")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { isHovered in
+                        if isHovered {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.arrow.set()
+                        }
+                    }
+                    .padding(.trailing, 8)
+
+                    Button(action: { showCardCreator.toggle() }) {
+                        Image(systemName: "plus.circle")
                             .font(.system(size: 20))
                             .foregroundColor(.white.opacity(0.8))
                     }
@@ -204,6 +225,9 @@ struct ContentView: View {
                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                 )
             }
+            if showCardCreator {
+                CardCreatorView(isShowing: $showCardCreator, onSave: fetchCards)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.black)
@@ -237,6 +261,56 @@ struct ContentView: View {
                 print("Decoding error: \(error)")
             }
         }.resume()
+    }
+
+    func parseCards() {
+        let sections = sourceText.components(separatedBy: cardDelimiter)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        parsedCards = sections.compactMap { section in
+            let parts = section.components(separatedBy: frontBackDelimiter)
+            guard parts.count == 2 else { return nil }
+            return (
+                front: parts[0].trimmingCharacters(in: .whitespacesAndNewlines),
+                back: parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+        }
+    }
+
+    func saveNewCards() {
+        let newCards = parsedCards.map { card in
+            NewCard(
+                front: card.front,
+                back: card.back,
+                tags: newCardTags.split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            )
+        }
+
+        guard let url = URL(string: "http://127.0.0.1:8000/add_cards") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let jsonData = try JSONEncoder().encode(newCards)
+            request.httpBody = jsonData
+
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("Error adding cards: \(error)")
+                    return
+                }
+                print("Successfully added \(newCards.count) cards")
+                DispatchQueue.main.async {
+                    self.showCardCreator = false
+                    self.fetchCards()
+                }
+            }.resume()
+        } catch {
+            print("Error encoding cards: \(error)")
+        }
     }
 }
 
@@ -680,6 +754,162 @@ struct ViewSizeKey: PreferenceKey {
     static var defaultValue: CGSize = .zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
         value = nextValue()
+    }
+}
+
+struct NewCard: Encodable {
+    let front: String
+    let back: String
+    let tags: [String]
+}
+
+struct CardCreatorView: View {
+    @Binding var isShowing: Bool
+    @State private var frontBackDelimiter = "=>"
+    @State private var cardDelimiter = "&"
+    @State private var sourceText = ""
+    @State private var parsedCards: [(front: String, back: String)] = []
+    @State private var newCardTags = ""
+    var onSave: () -> Void
+
+    var body: some View {
+        Color.black
+            .ignoresSafeArea()
+            .onTapGesture {
+                isShowing = false
+            }
+        VStack(spacing: 16) {
+            HStack {
+                Text("Card Creator")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Spacer()
+                Button(action: { isShowing = false }) {
+                    Image(systemName: "xmark")
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Front-Back Delimiter:")
+                    TextField("", text: $frontBackDelimiter)
+                        .textFieldStyle(.roundedBorder)
+                }
+                VStack(alignment: .leading) {
+                    Text("Between-Card Delimiter:")
+                    TextField("", text: $cardDelimiter)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            HStack(spacing: 16) {
+                VStack(alignment: .leading) {
+                    Text("Source Text:")
+                    TextEditor(text: $sourceText)
+                        .font(.system(.body))
+                        .onChange(of: sourceText) { oldValue, newValue in
+                            parseCards()
+                        }
+
+                    Text("Tags (comma separated):")
+                        .padding(.top, 8)
+                    TextField("", text: $newCardTags)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body))
+                }
+                .frame(maxWidth: .infinity)
+
+                VStack(alignment: .leading) {
+                    Text("Preview (\(parsedCards.count) cards):")
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(parsedCards, id: \.front) { card in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(card.front)")
+                                        .fontWeight(.medium)
+                                    Text("\(card.back)")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .frame(maxHeight: .infinity)
+
+            HStack {
+                Spacer()
+                Button(action: saveNewCards) {
+                    Text("Save Cards")
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+    }
+
+    private func parseCards() {
+        let sections = sourceText.components(separatedBy: cardDelimiter)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        parsedCards = sections.compactMap { section in
+            let parts = section.components(separatedBy: frontBackDelimiter)
+            guard parts.count == 2 else { return nil }
+            return (
+                front: parts[0].trimmingCharacters(in: .whitespacesAndNewlines),
+                back: parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+        }
+    }
+
+    private func saveNewCards() {
+        let newCards = parsedCards.map { card in
+            NewCard(
+                front: card.front,
+                back: card.back,
+                tags: newCardTags.split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            )
+        }
+
+        guard let url = URL(string: "http://127.0.0.1:8000/add_cards") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let jsonData = try JSONEncoder().encode(newCards)
+            request.httpBody = jsonData
+
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("Error adding cards: \(error)")
+                    return
+                }
+                print("Successfully added \(newCards.count) cards")
+                DispatchQueue.main.async {
+                    isShowing = false
+                    onSave()
+                }
+            }.resume()
+        } catch {
+            print("Error encoding cards: \(error)")
+        }
     }
 }
 

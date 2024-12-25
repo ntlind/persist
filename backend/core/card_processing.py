@@ -216,3 +216,55 @@ def save_cards(cards):
     conn.commit()
     conn.close()
     print(f"Successfully updated {len(cards)} cards")
+
+
+def add_cards(new_cards):
+    """Add new cards to the SQLite database"""
+    db_path = Path(__file__).parent.parent / "data" / "cards.db"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    for card in new_cards:
+        cursor.execute(
+            "INSERT INTO answers (correct, partial, incorrect) VALUES (?, ?, ?)",
+            (0, 0, 0),
+        )
+        answers_id = cursor.lastrowid
+
+        cursor.execute(
+            """
+            INSERT INTO cards (
+                front, back, last_asked, next_review, retired, streak, answers_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                card["front"],
+                card["back"],
+                "2024-01-01",
+                "2024-01-01",
+                False,
+                0,
+                answers_id,
+            ),
+        )
+        card_id = cursor.lastrowid
+
+        # Add tags
+        for tag in card["tags"]:
+            cursor.execute(
+                "INSERT OR IGNORE INTO tags (name) VALUES (?)", (tag.lower(),)
+            )
+
+            cursor.execute(
+                "SELECT id FROM tags WHERE name = ?", (tag.lower(),)
+            )
+            tag_id = cursor.fetchone()[0]
+
+            cursor.execute(
+                "INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)",
+                (card_id, tag_id),
+            )
+
+    conn.commit()
+    conn.close()
+    print(f"Successfully added {len(new_cards)} cards")
