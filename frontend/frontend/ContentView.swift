@@ -1,5 +1,12 @@
 import SwiftUI
 
+// TODO images
+// TODO refactor views
+// TODO proper markdown handling
+// TODO add effect when you get card correct
+// TODO remove comments
+//  TODO add types
+
 struct Card: Codable, Identifiable {
     let id: Int
     var front: String
@@ -71,18 +78,20 @@ struct MacOSTextField: NSViewRepresentable {
 struct ContentView: View {
     @State private var allCards: [Card] = []
     @State private var cards: [Card] = []
-    @State private var isLoading = true
+    @State private var isLoading: Bool = true
     @State private var selectedTag: String? = nil
-    @State private var editTextTags = ""
+    @State private var editTextTags: String = ""
     @State private var showingHelp: Bool = false
     @State private var showingSettings: Bool = false
     @State private var hideRetiredCards: Bool = true
     @State private var showCardCreator: Bool = false
-    @State private var frontBackDelimiter = "=>"
-    @State private var cardDelimiter = "&"
-    @State private var sourceText = ""
+    @State private var frontBackDelimiter: String = "=>"
+    @State private var cardDelimiter: String = "&"
+    @State private var sourceText: String = ""
     @State private var parsedCards: [(front: String, back: String)] = []
-    @State private var newCardTags = ""
+    @State private var newCardTags: String = ""
+    @State private var sessionCorrect: Int = 0
+    @State private var sessionIncorrect: Int = 0
 
     var body: some View {
         ZStack {
@@ -316,16 +325,19 @@ struct ContentView: View {
 
 struct TagDetailView: View {
     let cards: [Card]
-    @State private var currentIndex = 0
-    @State private var isBackVisible = false
+    @State private var currentIndex: Int = 0
+    @State private var sessionCorrect: Int = 0
+    @State private var sessionIncorrect: Int = 0
+    @State private var isBackVisible: Bool = false
     @State private var localCards: [Card]
     @State private var pendingAnswer: String? = nil
     @FocusState private var isFocused: Bool
     @FocusState private var keyboardFocused: Bool
-    @State private var isEditing = false
-    @State private var editTextFront = ""
-    @State private var editTextBack = ""
+    @State private var isEditing: Bool = false
+    @State private var editTextFront: String = ""
+    @State private var editTextBack: String = ""
     @Binding var editTextTags: String
+    @State private var sessionStartTime: Date = Date()
 
     init(cards: [Card], editTextTags: Binding<String>) {
         self.cards = cards
@@ -336,69 +348,116 @@ struct TagDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if !cards.isEmpty {
-                let card = localCards[currentIndex]
-                ZStack(alignment: .topTrailing) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        if isEditing {
-                            TextField("Front", text: $editTextFront)
-                                .textFieldStyle(.plain)
-                                .font(.headline)
+                if currentIndex >= localCards.count {
+                    ReportCardView(
+                        correctCount: sessionCorrect,
+                        incorrectCount: sessionIncorrect,
+                        sessionDuration: Date().timeIntervalSince(sessionStartTime)
+                    )
+                } else {
+                    let card = localCards[currentIndex]
+                    ZStack(alignment: .topTrailing) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if isEditing {
+                                TextField("Front", text: $editTextFront)
+                                    .textFieldStyle(.plain)
+                                    .font(.headline)
 
-                            TextField("Tags (comma separated)", text: $editTextTags)
-                                .textFieldStyle(.plain)
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        } else {
-                            Text(
-                                LocalizedStringKey(
-                                    card.front.replacingOccurrences(
-                                        of: "/n", with: ""))
-                            )
-                            .font(.headline)
-                        }
-
-                        Spacer()
-
-                        if isEditing {
-                            TextEditor(text: $editTextBack)
-                                .font(.subheadline)
-                                .scrollContentBackground(.hidden)
-                                .background(Color.clear)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .multilineTextAlignment(.leading)
-                                .padding(.horizontal, -5)
-                                .focused($keyboardFocused)
-                                .onAppear {
-                                    keyboardFocused = true
-                                }
-                        } else {
-                            if !isBackVisible {
-                                VStack {
-                                    Text("Press space to reveal answer")
-                                        .italic()
-                                        .foregroundColor(.gray)
-                                    Spacer()
-                                }
-                                .frame(
-                                    maxWidth: .infinity, maxHeight: .infinity,
-                                    alignment: .topLeading)
+                                TextField("Tags (comma separated)", text: $editTextTags)
+                                    .textFieldStyle(.plain)
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
                             } else {
-                                ScrollView {
-                                    Text(
-                                        LocalizedStringKey(
-                                            card.back.replacingOccurrences(of: "- ", with: "• "))
-                                    )
-                                    .font(.system(size: 14))
-                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                Text(
+                                    LocalizedStringKey(
+                                        card.front.replacingOccurrences(
+                                            of: "/n", with: ""))
+                                )
+                                .font(.headline)
+                            }
+
+                            Spacer()
+
+                            if isEditing {
+                                TextEditor(text: $editTextBack)
+                                    .font(.subheadline)
+                                    .scrollContentBackground(.hidden)
+                                    .background(Color.clear)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.horizontal, -5)
+                                    .focused($keyboardFocused)
+                                    .onAppear {
+                                        keyboardFocused = true
+                                    }
+                            } else {
+                                if !isBackVisible {
+                                    VStack {
+                                        Text("Press space to reveal answer")
+                                            .italic()
+                                            .foregroundColor(.gray)
+                                        Spacer()
+                                    }
+                                    .frame(
+                                        maxWidth: .infinity, maxHeight: .infinity,
+                                        alignment: .topLeading)
+                                } else {
+                                    ScrollView {
+                                        Text(
+                                            LocalizedStringKey(
+                                                card.back.replacingOccurrences(of: "- ", with: "• ")
+                                            )
+                                        )
+                                        .font(.system(size: 14))
+                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                                    }
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 }
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .overlay(
+                            Button(action: {
+                                if !localCards[currentIndex].retired {
+                                    if isEditing {
+                                        localCards[currentIndex].front = editTextFront
+                                        localCards[currentIndex].back = editTextBack
+                                        localCards[currentIndex].tags =
+                                            editTextTags
+                                            .split(separator: ",")
+                                            .map(String.init)
+                                        saveEditsIfNeeded()
+                                    } else {
+                                        let card = localCards[currentIndex]
+                                        editTextFront = card.front
+                                        editTextBack = card.back
+                                        editTextTags = card.tags.joined(separator: ", ")
+                                    }
+                                    isEditing = !isEditing
+                                }
+                            }) {
+                                EmptyView()
+                            }
+                            .keyboardShortcut("e", modifiers: [])
+                            .opacity(0)
+                        )
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(8)
                     .overlay(
-                        Button(action: {
-                            if !localCards[currentIndex].retired {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isEditing ? Color.orange : Color.clear, lineWidth: 2)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    HStack {
+                        if localCards[currentIndex].retired {
+                            Image(systemName: "xmark.circle")
+                                .foregroundColor(.white)
+                                .font(.system(size: 20))
+                        } else {
+                            Button(action: {
                                 if isEditing {
                                     localCards[currentIndex].front = editTextFront
                                     localCards[currentIndex].back = editTextBack
@@ -408,127 +467,93 @@ struct TagDetailView: View {
                                         .map(String.init)
                                     saveEditsIfNeeded()
                                 } else {
-                                    let card = localCards[currentIndex]
-                                    editTextFront = card.front
-                                    editTextBack = card.back
-                                    editTextTags = card.tags.joined(separator: ", ")
+                                    editTextFront =
+                                        localCards[currentIndex]
+                                        .front
+                                    editTextBack =
+                                        localCards[currentIndex]
+                                        .back
+                                    editTextTags = localCards[currentIndex]
+                                        .tags.joined(separator: ", ")
                                 }
                                 isEditing = !isEditing
+                            }) {
+                                Image(systemName: "pencil.circle")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 20))
                             }
-                        }) {
-                            EmptyView()
+                            .buttonStyle(.plain)
+                            .onHover { isHovered in
+                                if isHovered {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.arrow.set()
+                                }
+                            }.keyboardShortcut("e", modifiers: [.command])
                         }
-                        .keyboardShortcut("e", modifiers: [])
-                        .opacity(0)
-                    )
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding()
-                .background(Color.gray.opacity(0.2))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isEditing ? Color.orange : Color.clear, lineWidth: 2)
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                HStack {
-                    if localCards[currentIndex].retired {
-                        Image(systemName: "xmark.circle")
-                            .foregroundColor(.white)
-                            .font(.system(size: 20))
-                    } else {
-                        Button(action: {
-                            if isEditing {
-                                localCards[currentIndex].front = editTextFront
-                                localCards[currentIndex].back = editTextBack
-                                localCards[currentIndex].tags =
-                                    editTextTags
-                                    .split(separator: ",")
-                                    .map(String.init)
-                                saveEditsIfNeeded()
-                            } else {
-                                editTextFront =
-                                    localCards[currentIndex]
-                                    .front
-                                editTextBack =
-                                    localCards[currentIndex]
-                                    .back
-                                editTextTags = localCards[currentIndex]
-                                    .tags.joined(separator: ", ")
+                        Spacer()
+                        HStack {
+                            Button(action: {
+                                if currentIndex > 0 {
+                                    saveEditsIfNeeded()
+                                    currentIndex -= 1
+                                    isBackVisible = false
+                                    isEditing = false
+                                }
+                            }) {
+                                Image(systemName: "arrow.left")
+                                    .foregroundColor(.white)
+                                    .opacity(currentIndex > 0 ? 1 : 0.3)
                             }
-                            isEditing = !isEditing
-                        }) {
-                            Image(systemName: "pencil.circle")
-                                .foregroundColor(.white)
-                                .font(.system(size: 20))
-                        }
-                        .buttonStyle(.plain)
-                        .onHover { isHovered in
-                            if isHovered {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.arrow.set()
+                            .keyboardShortcut("a", modifiers: [])
+                            .buttonStyle(.plain)
+                            .onHover { isHovered in
+                                if currentIndex > 0 && isHovered {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.arrow.set()
+                                }
                             }
-                        }.keyboardShortcut("e", modifiers: [.command])
-                    }
-                    Spacer()
-                    HStack {
-                        Button(action: {
-                            if currentIndex > 0 {
-                                saveEditsIfNeeded()
-                                currentIndex -= 1
-                                isBackVisible = false
-                                isEditing = false
-                            }
-                        }) {
-                            Image(systemName: "arrow.left")
-                                .foregroundColor(.white)
-                                .opacity(currentIndex > 0 ? 1 : 0.3)
-                        }
-                        .keyboardShortcut("a", modifiers: [])
-                        .buttonStyle(.plain)
-                        .onHover { isHovered in
-                            if currentIndex > 0 && isHovered {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.arrow.set()
-                            }
-                        }
 
-                        Text("\(currentIndex + 1) of \(localCards.count)")
+                            Text("\(currentIndex + 1) of \(localCards.count)")
+                                .font(.caption)
+                                .padding(.horizontal, 16)
+
+                            Button(action: {
+                                if currentIndex < cards.count - 1 {
+                                    localCards[currentIndex].answers.correct += 1
+                                    localCards[currentIndex].streak += 1
+                                    sessionCorrect += 1
+                                    saveEditsIfNeeded()
+                                    currentIndex += 1
+                                    isBackVisible = false
+                                    isEditing = false
+                                } else if currentIndex == cards.count - 1 {
+                                    sessionCorrect += 1
+                                    currentIndex += 1
+                                }
+                            }) {
+                                Image(systemName: "arrow.right")
+                                    .foregroundColor(.white)
+                                    .opacity(currentIndex < cards.count - 1 ? 1 : 0.3)
+                            }
+                            .keyboardShortcut("d", modifiers: [])
+                            .buttonStyle(.plain)
+                            .onHover { isHovered in
+                                if currentIndex < cards.count - 1 && isHovered {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.arrow.set()
+                                }
+                            }
+                        }
+                        Spacer()
+                        Text("Streak: \(localCards[currentIndex].streak)")
                             .font(.caption)
-                            .padding(.horizontal, 16)
-
-                        Button(action: {
-                            if currentIndex < cards.count - 1 {
-                                localCards[currentIndex].answers.correct += 1
-                                localCards[currentIndex].streak += 1
-                                saveEditsIfNeeded()
-                                currentIndex += 1
-                                isBackVisible = false
-                                isEditing = false
-                            }
-                        }) {
-                            Image(systemName: "arrow.right")
-                                .foregroundColor(.white)
-                                .opacity(currentIndex < cards.count - 1 ? 1 : 0.3)
-                        }
-                        .keyboardShortcut("d", modifiers: [])
-                        .buttonStyle(.plain)
-                        .onHover { isHovered in
-                            if currentIndex < cards.count - 1 && isHovered {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.arrow.set()
-                            }
-                        }
-                    }
-                    Spacer()
-                    Text("Streak: \(localCards[currentIndex].streak)")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .frame(width: 80, alignment: .trailing)
-                }.padding(.top, 8)
+                            .foregroundColor(.gray)
+                            .frame(width: 80, alignment: .trailing)
+                    }.padding(.top, 8)
+                }
             } else {
                 Text("No cards found for this tag")
             }
@@ -554,10 +579,14 @@ struct TagDetailView: View {
                 if currentIndex < localCards.count - 1 {
                     localCards[currentIndex].answers.incorrect += 1
                     localCards[currentIndex].streak = 0
+                    sessionIncorrect += 1
                     saveEditsIfNeeded()
                     currentIndex += 1
                     isBackVisible = false
                     isEditing = false
+                } else if currentIndex == localCards.count - 1 {
+                    sessionIncorrect += 1
+                    currentIndex += 1
                 }
             }) {
             }
@@ -572,10 +601,9 @@ struct TagDetailView: View {
             .buttonStyle(.plain)
             .keyboardShortcut(.space, modifiers: [])
         }.opacity(0)
-
-        // .onChange(of: cards) { oldValue, newValue in
-        //     localCards = newValue
-        // }
+            .onAppear {
+                sessionStartTime = Date()
+            }
     }
 
     func saveEditsIfNeeded() {
@@ -648,7 +676,7 @@ struct TagsView: View {
         return uniqueTags.filter { $0.localizedCaseInsensitiveContains(searchText) }
     }
 
-    private let columns = [
+    private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16),
     ]
@@ -910,6 +938,69 @@ struct CardCreatorView: View {
         } catch {
             print("Error encoding cards: \(error)")
         }
+    }
+}
+
+struct ReportCardView: View {
+    let correctCount: Int
+    let incorrectCount: Int
+    let sessionDuration: TimeInterval
+
+    private var formattedDuration: String {
+        let minutes: Int = Int(sessionDuration) / 60
+        let seconds: Int = Int(sessionDuration) % 60
+        return "\(minutes)m \(seconds)s"
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("You're finished! Well done.")
+                .font(.title2)
+                .fontWeight(.bold)
+
+            Text("Time: \(formattedDuration)")
+                .font(.headline)
+                .foregroundColor(.gray)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 12, height: 12)
+                    Text("Correct: \(correctCount)")
+                }
+
+                HStack {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 12, height: 12)
+                    Text("Incorrect: \(incorrectCount)")
+                }
+
+                // Simple bar graph
+                GeometryReader { geometry in
+                    let total = CGFloat(correctCount + incorrectCount)
+                    let correctWidth =
+                        total > 0 ? geometry.size.width * (CGFloat(correctCount) / total) : 0
+
+                    HStack(spacing: 0) {
+                        Rectangle()
+                            .fill(Color.green)
+                            .frame(width: correctWidth)
+
+                        Rectangle()
+                            .fill(Color.red)
+                    }
+                }
+                .frame(height: 24)
+                .cornerRadius(4)
+            }
+            .padding()
+            .background(Color.gray.opacity(0.2))
+            .cornerRadius(8)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
