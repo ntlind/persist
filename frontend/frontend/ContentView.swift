@@ -16,9 +16,10 @@ struct Card: Codable, Identifiable {
     var answers: Answers
     var retired: Bool
     var streak: Int
+    var images: [String]
 
     enum CodingKeys: String, CodingKey {
-        case id, front, back, tags, retired, streak
+        case id, front, back, tags, retired, streak, images
         case lastAsked = "last_asked"
         case nextReview = "next_review"
         case answers
@@ -708,6 +709,20 @@ struct TagsView: View {
         GridItem(.flexible(), spacing: 16),
     ]
 
+    private var tagCounts: [String: Int] {
+        var counts: [String: Int] = [:]
+        for card in cards {
+            for tag in card.tags {
+                let formattedTag = tag.replacingOccurrences(of: "_", with: " ")
+                    .split(separator: " ")
+                    .map { $0.capitalized }
+                    .joined(separator: " ")
+                counts[formattedTag, default: 0] += 1
+            }
+        }
+        return counts
+    }
+
     var body: some View {
         VStack {
             if isLoading {
@@ -733,6 +748,9 @@ struct TagsView: View {
                                     .foregroundColor(.white)
                                 Text(tag)
                                     .lineLimit(1)
+                                Spacer()
+                                Text("\(tagCounts[tag, default: 0])")
+                                    .foregroundColor(.gray)
                             }
                             .padding()
                             .frame(maxWidth: .infinity)

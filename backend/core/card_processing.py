@@ -20,11 +20,8 @@ def load_cards():
     """Load all cards from the SQLite database"""
     db_path = Path(__file__).parent.parent / "data" / "cards.db"
     conn = sqlite3.connect(db_path)
-
-    # Create a cursor object
     cursor = conn.cursor()
 
-    print(cursor.fetchall())
     cursor.execute(
         """
     SELECT
@@ -35,6 +32,7 @@ def load_cards():
         c.next_review,
         c.retired,
         c.streak,
+        c.images,
         a.correct,
         a.partial,
         a.incorrect,
@@ -57,12 +55,14 @@ def load_cards():
             next_review,
             retired,
             streak,
+            images_json,
             correct,
             partial,
             incorrect,
             tags,
         ) = row
         tags = tags.split(",") if tags else []
+        images = json.loads(images_json) if images_json else []
 
         card = {
             "id": id_,
@@ -72,6 +72,7 @@ def load_cards():
             "next_review": next_review,
             "retired": bool(retired),
             "tags": tags,
+            "images": images,
             "answers": {
                 "correct": correct,
                 "partial": partial,
