@@ -3,7 +3,6 @@ import SwiftUI
 // TODO images
 // TODO refactor views
 // TODO proper markdown handling
-// TODO add effect when you get card correct
 // TODO remove comments
 //  TODO add types
 
@@ -92,6 +91,8 @@ struct ContentView: View {
     @State private var newCardTags: String = ""
     @State private var sessionCorrect: Int = 0
     @State private var sessionIncorrect: Int = 0
+    @State private var showCorrectBorder: Bool = false
+    @State private var showIncorrectBorder: Bool = false
 
     var body: some View {
         ZStack {
@@ -338,6 +339,8 @@ struct TagDetailView: View {
     @State private var editTextBack: String = ""
     @Binding var editTextTags: String
     @State private var sessionStartTime: Date = Date()
+    @State private var showCorrectBorder: Bool = false
+    @State private var showIncorrectBorder: Bool = false
 
     init(cards: [Card], editTextTags: Binding<String>) {
         self.cards = cards
@@ -447,8 +450,22 @@ struct TagDetailView: View {
                     .background(Color.gray.opacity(0.2))
                     .cornerRadius(8)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isEditing ? Color.orange : Color.clear, lineWidth: 2)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.green, lineWidth: 2)
+                                .shadow(color: Color.green.opacity(0.5), radius: 10, x: 0, y: 0)
+                                .opacity(showCorrectBorder ? 1 : 0)
+
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.red, lineWidth: 2)
+                                .shadow(color: Color.red.opacity(0.5), radius: 10, x: 0, y: 0)
+                                .opacity(showIncorrectBorder ? 1 : 0)
+
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isEditing ? Color.orange : Color.clear, lineWidth: 2)
+                        }
+                        .animation(.easeOut(duration: 0.3), value: showCorrectBorder)
+                        .animation(.easeOut(duration: 0.3), value: showIncorrectBorder)
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     HStack {
@@ -525,9 +542,14 @@ struct TagDetailView: View {
                                     localCards[currentIndex].streak += 1
                                     sessionCorrect += 1
                                     saveEditsIfNeeded()
-                                    currentIndex += 1
-                                    isBackVisible = false
-                                    isEditing = false
+
+                                    showCorrectBorder = true
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        showCorrectBorder = false
+                                        currentIndex += 1
+                                        isBackVisible = false
+                                        isEditing = false
+                                    }
                                 } else if currentIndex == cards.count - 1 {
                                     sessionCorrect += 1
                                     currentIndex += 1
@@ -581,9 +603,14 @@ struct TagDetailView: View {
                     localCards[currentIndex].streak = 0
                     sessionIncorrect += 1
                     saveEditsIfNeeded()
-                    currentIndex += 1
-                    isBackVisible = false
-                    isEditing = false
+
+                    showIncorrectBorder = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showIncorrectBorder = false
+                        currentIndex += 1
+                        isBackVisible = false
+                        isEditing = false
+                    }
                 } else if currentIndex == localCards.count - 1 {
                     sessionIncorrect += 1
                     currentIndex += 1
