@@ -76,6 +76,7 @@ struct ContentView: View {
     @State private var editTextTags = ""
     @State private var showingHelp: Bool = false
     @State private var showingSettings: Bool = false
+    @State private var hideRetiredCards: Bool = true
 
     var body: some View {
         ZStack {
@@ -189,7 +190,10 @@ struct ContentView: View {
                         .buttonStyle(.plain)
                     }
 
-                    Toggle("Hide Retired Cards", isOn: .constant(false))
+                    Toggle("Hide Retired Cards", isOn: $hideRetiredCards)
+                        .onChange(of: hideRetiredCards) { oldValue, newValue in
+                            cards = hideRetiredCards ? allCards.filter { !$0.retired } : allCards
+                        }
                 }
                 .padding()
                 .frame(width: 400)
@@ -225,7 +229,8 @@ struct ContentView: View {
                 let decodedCards = try JSONDecoder().decode([Card].self, from: data)
                 DispatchQueue.main.async {
                     self.allCards = decodedCards
-                    self.cards = decodedCards
+                    self.cards =
+                        hideRetiredCards ? decodedCards.filter { !$0.retired } : decodedCards
                     self.isLoading = false
                 }
             } catch {
