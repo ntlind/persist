@@ -99,6 +99,15 @@ struct ContentView: View {
     @State private var sessionIncorrect: Int = 0
     @State private var showCorrectBorder: Bool = false
     @State private var showIncorrectBorder: Bool = false
+    @State private var selectedCardOrder: CardOrder = .byStreak
+
+    enum CardOrder: String, CaseIterable {
+        case inOrder = "In Order"
+        case random = "Random"
+        case byStreak = "By Streak (lowest first)"
+        case byLastAsked = "By Last Asked (oldest first)"
+        case byRatio = "By Success Ratio (lowest first)"
+    }
 
     var body: some View {
         ZStack {
@@ -131,18 +140,21 @@ struct ContentView: View {
                             .padding(.vertical, 8)
                     }
                     Spacer()
-                    Image(systemName: "questionmark.circle")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white.opacity(0.8))
-                        .onHover { isHovered in
-                            showingHelp = isHovered
-                            if isHovered {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.arrow.set()
-                            }
+                    Button(action: { showingSettings.toggle() }) {
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { isHovered in
+                        showingHelp = isHovered
+                        if isHovered {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.arrow.set()
                         }
-                        .padding(.trailing, 8)
+                    }
+                    .padding(.trailing, 8)
                     Button(action: { showingSettings.toggle() }) {
                         Image(systemName: "gear")
                             .font(.system(size: 20))
@@ -231,7 +243,20 @@ struct ContentView: View {
                     Toggle("Hide Retired Cards", isOn: $hideRetiredCards)
                         .onChange(of: hideRetiredCards) { oldValue, newValue in
                             cards = hideRetiredCards ? allCards.filter { !$0.retired } : allCards
+                            sortCards()
                         }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Picker("Card Order: ", selection: $selectedCardOrder) {
+                            ForEach(CardOrder.allCases, id: \.self) { order in
+                                Text(order.rawValue).tag(order)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: selectedCardOrder) { oldValue, newValue in
+                            sortCards()
+                        }
+                    }
                 }
                 .padding()
                 .frame(width: 400)
@@ -270,8 +295,7 @@ struct ContentView: View {
                 let decodedCards = try JSONDecoder().decode([Card].self, from: data)
                 DispatchQueue.main.async {
                     self.allCards = decodedCards
-                    self.cards =
-                        hideRetiredCards ? decodedCards.filter { !$0.retired } : decodedCards
+                    self.sortCards()
                     self.isLoading = false
                 }
             } catch {
@@ -328,6 +352,34 @@ struct ContentView: View {
         } catch {
             print("Error encoding cards: \(error)")
         }
+    }
+
+    private func sortCards() {
+        var sortedCards = hideRetiredCards ? allCards.filter { !$0.retired } : allCards
+
+        switch selectedCardOrder {
+        case .inOrder:
+            // Keep original order
+            break
+        case .random:
+            sortedCards.shuffle()
+        case .byStreak:
+            sortedCards.sort { $0.streak < $1.streak }
+        case .byLastAsked:
+            sortedCards.sort { $0.lastAsked < $1.lastAsked }
+        case .byRatio:
+            sortedCards.sort {
+                let ratio1 =
+                    $0.answers.correct == 0
+                    ? 0 : Double($0.answers.incorrect) / Double($0.answers.correct)
+                let ratio2 =
+                    $1.answers.correct == 0
+                    ? 0 : Double($1.answers.incorrect) / Double($1.answers.correct)
+                return ratio1 > ratio2  // Higher ratio means more incorrect answers
+            }
+        }
+
+        cards = sortedCards
     }
 }
 
@@ -745,8 +797,12 @@ struct TagDetailView: View {
 
     func saveEditsIfNeeded() {
         if isEditing {
+            let dateFormatter = ISO8601DateFormatter()
+            let currentTimestamp = dateFormatter.string(from: Date())
+
             localCards[currentIndex].front = editTextFront
             localCards[currentIndex].back = editTextBack
+            localCards[currentIndex].lastAsked = currentTimestamp
             localCards[currentIndex].tags =
                 editTextTags
                 .split(separator: ",")
@@ -762,7 +818,6 @@ struct TagDetailView: View {
             let jsonData = try JSONEncoder().encode([localCards[currentIndex]])
             request.httpBody = jsonData
 
-            // Print JSON as a formatted string
             if let jsonString = String(data: jsonData, encoding: .utf8) {
                 print("Sending JSON:", jsonString)
             }
@@ -772,12 +827,7 @@ struct TagDetailView: View {
                     print("Error saving card: \(error)")
                     return
                 }
-                let timestamp = DateFormatter.localizedString(
-                    from: Date(),
-                    dateStyle: .none,
-                    timeStyle: .medium
-                )
-                print("Card saved successfully at \(timestamp)")
+                print("Card saved successfully.")
             }.resume()
         } catch {
             print("Error encoding card: \(error)")
