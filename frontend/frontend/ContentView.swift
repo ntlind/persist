@@ -97,8 +97,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 4) {
+            VStack(alignment: .leading) {
+                HStack(spacing: 2) {
                     Button(action: {
                         selectedTag = nil
                         fetchCards()
@@ -169,6 +169,7 @@ struct ContentView: View {
                     .padding(.trailing, 12)
                 }
                 .padding(.horizontal)
+                .padding(.top, 8)
 
                 if let selectedTag = selectedTag {
                     let formattedTag =
@@ -280,7 +281,7 @@ struct ContentView: View {
             .filter { !$0.isEmpty }
 
         parsedCards = sections.compactMap { section in
-            let parts = section.components(separatedBy: frontBackDelimiter)
+            let parts: [String] = section.components(separatedBy: frontBackDelimiter)
             guard parts.count == 2 else { return nil }
             return (
                 front: parts[0].trimmingCharacters(in: .whitespacesAndNewlines),
@@ -290,7 +291,7 @@ struct ContentView: View {
     }
 
     func saveNewCards() {
-        let newCards = parsedCards.map { card in
+        let newCards: [NewCard] = parsedCards.map { card in
             NewCard(
                 front: card.front,
                 back: card.back,
@@ -347,6 +348,80 @@ struct TagDetailView: View {
         self.cards = cards
         self._localCards = State(initialValue: cards)
         self._editTextTags = editTextTags
+    }
+
+    private func formatBulletPoints(text: String) -> String {
+        let bulletPattern = "(?m)^\\s*-\\s"
+        if let bulletRegex = try? NSRegularExpression(pattern: bulletPattern) {
+            return bulletRegex.stringByReplacingMatches(
+                in: text,
+                range: NSRange(text.startIndex..<text.endIndex, in: text),
+                withTemplate: "• "
+            )
+        }
+        return text
+    }
+
+    private func parseCodeBlocks(from text: String) -> NSAttributedString {
+        let attributedString: NSMutableAttributedString = NSMutableAttributedString(string: text)
+
+        let pattern: String = "```([\\s\\S]*?)```"
+        let regex: NSRegularExpression? = try? NSRegularExpression(pattern: pattern)
+        let nsRange: NSRange = NSRange(text.startIndex..<text.endIndex, in: text)
+
+        if let matches: [NSTextCheckingResult] = regex?.matches(in: text, range: nsRange) {
+            for match: NSTextCheckingResult in matches.reversed() {
+                if let range: Range<String.Index> = Range(match.range, in: text) {
+                    let codeBlock: String = String(text[range])
+                    let code: String = codeBlock.replacingOccurrences(of: "```", with: "")
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+
+                    let codeAttributes: [NSAttributedString.Key: Any] = [
+                        .font: NSFont.monospacedSystemFont(
+                            ofSize: 12, weight: .regular),
+                        .backgroundColor: NSColor.gray.withAlphaComponent(0.4),
+                        .foregroundColor: NSColor.white,
+                    ]
+
+                    let formattedCode: NSAttributedString = NSAttributedString(
+                        string: code,
+                        attributes: codeAttributes
+                    )
+
+                    if let nsRange: NSRange = Range(match.range, in: text)
+                        .flatMap({ NSRange($0, in: text) })
+                    {
+                        attributedString.replaceCharacters(in: nsRange, with: formattedCode)
+                    }
+                }
+            }
+        }
+
+        return attributedString
+    }
+
+    private func parseMarkdownImages(from text: String) -> (text: String, imageUrls: [String]) {
+        var cleanText: String = text
+        var imageUrls: [String] = []
+
+        let pattern: String = "!\\[.*?\\]\\((.*?)\\)"
+        let regex: NSRegularExpression? = try? NSRegularExpression(pattern: pattern)
+        let nsRange: NSRange = NSRange(text.startIndex..<text.endIndex, in: text)
+
+        if let matches: [NSTextCheckingResult] = regex?.matches(in: text, range: nsRange) {
+            for match: NSTextCheckingResult in matches.reversed() {
+                if let urlRange: Range<String.Index> = Range(match.range(at: 1), in: text) {
+                    let imageUrl: String = String(text[urlRange])
+                    imageUrls.append(imageUrl)
+                }
+
+                if let range: Range<String.Index> = Range(match.range, in: text) {
+                    cleanText.removeSubrange(range)
+                }
+            }
+        }
+
+        return (cleanText, imageUrls.reversed())
     }
 
     var body: some View {
@@ -407,12 +482,41 @@ struct TagDetailView: View {
                                         alignment: .topLeading)
                                 } else {
                                     ScrollView {
-                                        Text(
-                                            LocalizedStringKey(
-                                                card.back.replacingOccurrences(of: "- ", with: "• ")
-                                            )
-                                        )
-                                        .font(.system(size: 14))
+                                        VStack(alignment: .leading, spacing: 12) {
+                                            let parsed = parseMarkdownImages(from: card.back)
+                                            let bulletFormatted = formatBulletPoints(
+                                                text: parsed.text)
+                                            let formattedText = parseCodeBlocks(
+                                                from: bulletFormatted)
+
+                                            Text(AttributedString(formattedText))
+                                                .font(.system(size: 16.8))
+                                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                                .textSelection(.enabled)
+                                                .lineSpacing(4)
+
+                                            ForEach(parsed.imageUrls, id: \.self) { imageUrl in
+                                                AsyncImage(url: URL(string: imageUrl)) { phase in
+                                                    switch phase {
+                                                    case .empty:
+                                                        ProgressView()
+                                                    case .success(let image):
+                                                        image
+                                                            .resizable()
+                                                            .aspectRatio(contentMode: .fit)
+                                                            .frame(
+                                                                maxWidth: .infinity, maxHeight: 800
+                                                            )
+                                                            .cornerRadius(8)
+                                                    case .failure:
+                                                        Image(systemName: "photo")
+                                                            .foregroundColor(.gray)
+                                                    @unknown default:
+                                                        EmptyView()
+                                                    }
+                                                }
+                                            }
+                                        }
                                         .frame(maxWidth: .infinity, alignment: .topLeading)
                                     }
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
