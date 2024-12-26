@@ -43,3 +43,16 @@ async def add_cards(request: Request):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/update_cards")
+async def update_cards(request: Request):
+    try:
+        data = await request.json()
+        card_processing.update_cards(data)
+        return {"message": f"Successfully updated {len(data)} cards"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -219,6 +219,85 @@ def save_cards(cards):
     print(f"Successfully updated {len(cards)} cards")
 
 
+def update_cards(cards):
+    """Update multiple cards in bulk, preserving their IDs and metadata"""
+    db_path = Path(__file__).parent.parent / "data" / "cards.db"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Start a transaction
+        cursor.execute("BEGIN TRANSACTION")
+
+        for card in cards:
+            # Verify card exists
+            cursor.execute("SELECT id FROM cards WHERE id = ?", (card["id"],))
+            if not cursor.fetchone():
+                raise ValueError(f"Card with ID {card['id']} not found")
+
+            # Update card content
+            cursor.execute(
+                """
+                UPDATE cards 
+                SET front = ?, back = ?, retired = ?, streak = ?
+                WHERE id = ?
+                """,
+                (
+                    card["front"],
+                    card["back"],
+                    card["retired"],
+                    card["streak"],
+                    card["id"],
+                ),
+            )
+
+            # Update answers
+            cursor.execute(
+                """
+                UPDATE answers 
+                SET correct = ?, partial = ?, incorrect = ?
+                WHERE id = (SELECT answers_id FROM cards WHERE id = ?)
+                """,
+                (
+                    card["answers"]["correct"],
+                    card["answers"]["partial"],
+                    card["answers"]["incorrect"],
+                    card["id"],
+                ),
+            )
+
+            # Update tags
+            cursor.execute(
+                "DELETE FROM card_tags WHERE card_id = ?", (card["id"],)
+            )
+            for tag in card["tags"]:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO tags (name) VALUES (?)",
+                    (tag.lower(),),
+                )
+                cursor.execute(
+                    "SELECT id FROM tags WHERE name = ?", (tag.lower(),)
+                )
+                tag_id = cursor.fetchone()[0]
+                cursor.execute(
+                    "INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)",
+                    (card["id"], tag_id),
+                )
+
+        # Commit the transaction
+        cursor.execute("COMMIT")
+        print(f"Successfully updated {len(cards)} cards in bulk")
+
+    except Exception as e:
+        # Rollback on error
+        cursor.execute("ROLLBACK")
+        print(f"Error updating cards: {str(e)}")
+        raise
+
+    finally:
+        conn.close()
+
+
 def add_cards(new_cards):
     """Add new cards to the SQLite database"""
     db_path = Path(__file__).parent.parent / "data" / "cards.db"

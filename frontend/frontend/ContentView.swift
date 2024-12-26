@@ -5,7 +5,9 @@ import SwiftUI
 //  TODO add types
 // make header font scale with window size
 // ability to look at all cards in a list and/or expert them
-
+// TODO when you add a tag in the single card mode, you can't filter on it in Your Tags
+// TODO make it so retiring a card doesn't shift the arrow keys
+// TODO make it so the scroll is visible at all times
 struct Card: Codable, Identifiable {
     let id: Int
     var front: String
@@ -95,6 +97,7 @@ struct ContentView: View {
     @State private var showCorrectBorder: Bool = false
     @State private var showIncorrectBorder: Bool = false
     @State private var selectedCardOrder: CardOrder = .byStreak
+    @State private var showCardEditor: Bool = false
 
     enum CardOrder: String, CaseIterable {
         case inOrder = "In Order"
@@ -150,6 +153,20 @@ struct ContentView: View {
                         }
                     }
                     .padding(.trailing, 8)
+                    Button(action: { showCardEditor.toggle() }) {
+                        Image(systemName: "pencil.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { isHovered in
+                        if isHovered {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.arrow.set()
+                        }
+                    }
+                    .padding(.trailing, 8)
                     Button(action: { showingSettings.toggle() }) {
                         Image(systemName: "gear")
                             .font(.system(size: 20))
@@ -177,6 +194,7 @@ struct ContentView: View {
                             NSCursor.arrow.set()
                         }
                     }
+                    .padding(.trailing, 8)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -262,6 +280,9 @@ struct ContentView: View {
             }
             if showCardCreator {
                 CardCreatorView(isShowing: $showCardCreator, onSave: fetchCards)
+            }
+            if showCardEditor {
+                CardEditorView(isShowing: $showCardEditor, cards: cards, onSave: fetchCards)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -994,7 +1015,7 @@ struct NewCard: Encodable {
 
 struct CardCreatorView: View {
     @Binding var isShowing: Bool
-    @State private var frontBackDelimiter = "=>"
+    @State private var frontBackDelimiter = " => "
     @State private var cardDelimiter = "&&&"
     @State private var sourceText = ""
     @State private var parsedCards: [(front: String, back: String)] = []
@@ -1202,6 +1223,154 @@ struct ReportCardView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct CardEditorView: View {
+    @Binding var isShowing: Bool
+    let cards: [Card]
+    @State private var frontBackDelimiter: String = " =>\n\n"
+    @State private var cardDelimiter: String = "\n\n&&&\n\n"
+    @State private var editedText: String = ""
+    var onSave: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.8)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    isShowing = false
+                }
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text("Bulk Card Editor")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Button(action: { isShowing = false }) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.white)
+                            .font(.system(size: 20))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                ScrollView {
+                    TextEditor(text: $editedText)
+                        .font(.system(.body))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 8)
+
+                HStack {
+                    Spacer()
+                    Button(action: saveCards) {
+                        Text("Save Changes")
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.blue)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .onAppear {
+            loadCards()
+        }
+    }
+
+    private func loadCards() {
+        editedText = cards.map { card in
+            "\(card.front)\(frontBackDelimiter)\(card.back)\n\n[tags:\(card.tags.joined(separator: ", "))]\(cardDelimiter)"
+        }.joined()
+    }
+
+    private func saveCards() {
+        let sections = editedText.components(separatedBy: cardDelimiter)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let updatedCards = sections.enumerated().compactMap { index, section -> Card? in
+            // Extract tags if present
+            let tagPattern = "\\[tags:([^\\]]+)\\]"
+            let tagRegex = try? NSRegularExpression(pattern: tagPattern)
+            let nsString = section as NSString
+            let tags: [String]
+            if let match = tagRegex?.firstMatch(
+                in: section, range: NSRange(location: 0, length: nsString.length)),
+                let tagRange = Range(match.range(at: 1), in: section)
+            {
+                tags = section[tagRange]
+                    .split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+            } else {
+                tags = cards[safe: index]?.tags ?? []
+            }
+
+            // Remove tags section from content before splitting front/back
+            let contentWithoutTags = section.replacingOccurrences(
+                of: "\\[tags:[^\\]]+\\]", with: "", options: .regularExpression)
+            let parts = contentWithoutTags.components(separatedBy: frontBackDelimiter)
+            guard parts.count == 2 else { return nil }
+
+            let originalCard = cards[safe: index]
+            return Card(
+                id: originalCard?.id ?? index,
+                front: parts[0].trimmingCharacters(in: .whitespacesAndNewlines),
+                back: parts[1].trimmingCharacters(in: .whitespacesAndNewlines),
+                tags: tags,
+                lastAsked: originalCard?.lastAsked ?? "",
+                nextReview: originalCard?.nextReview ?? "",
+                answers: originalCard?.answers ?? Answers(correct: 0, partial: 0, incorrect: 0),
+                retired: originalCard?.retired ?? false,
+                streak: originalCard?.streak ?? 0,
+                images: originalCard?.images ?? []
+            )
+        }
+
+        guard let url = URL(string: "http://127.0.0.1:8000/update_cards") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let jsonData = try JSONEncoder().encode(updatedCards)
+            request.httpBody = jsonData
+
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("Error updating cards: \(error)")
+                    return
+                }
+                DispatchQueue.main.async {
+                    isShowing = false
+                    onSave()
+                }
+            }.resume()
+        } catch {
+            print("Error encoding cards: \(error)")
+        }
+    }
+}
+
+extension Array {
+    subscript(safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }
 
