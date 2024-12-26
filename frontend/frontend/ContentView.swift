@@ -5,6 +5,11 @@ import SwiftUI
 // TODO proper markdown handling
 // TODO remove comments
 //  TODO add types
+// ability to randomize cards
+// make header font scale with window size
+// sort the cards based on lastAsked
+// sort the cards based on lowest streak or highest ratio of incorrect to correct
+// ability to look at all cards in a list and/or expert them
 
 struct Card: Codable, Identifiable {
     let id: Int
