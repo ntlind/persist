@@ -1,14 +1,9 @@
 import SwiftUI
 
-// TODO images
 // TODO refactor views
-// TODO proper markdown handling
 // TODO remove comments
 //  TODO add types
-// ability to randomize cards
 // make header font scale with window size
-// sort the cards based on lastAsked
-// sort the cards based on lowest streak or highest ratio of incorrect to correct
 // ability to look at all cards in a list and/or expert them
 
 struct Card: Codable, Identifiable {
@@ -117,13 +112,12 @@ struct ContentView: View {
                         selectedTag = nil
                         fetchCards()
                     }) {
-                        Text("Your Tags")
+                        Text("Home")
                             .font(.helvetica(size: 12))
                             .foregroundColor(.white)
                     }
                     .buttonStyle(.plain)
                     .padding(.vertical, 8)
-                    .padding(.leading, 8)
                     .onHover { isHovered in
                         if isHovered {
                             NSCursor.pointingHand.push()
@@ -169,7 +163,6 @@ struct ContentView: View {
                         }
                     }
                     .padding(.trailing, 8)
-
                     Button(action: { showCardCreator.toggle() }) {
                         Image(systemName: "plus.circle")
                             .font(.system(size: 20))
@@ -183,7 +176,6 @@ struct ContentView: View {
                             NSCursor.arrow.set()
                         }
                     }
-                    .padding(.trailing, 12)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -998,7 +990,7 @@ struct NewCard: Encodable {
 struct CardCreatorView: View {
     @Binding var isShowing: Bool
     @State private var frontBackDelimiter = "=>"
-    @State private var cardDelimiter = "&"
+    @State private var cardDelimiter = "&&&"
     @State private var sourceText = ""
     @State private var parsedCards: [(front: String, back: String)] = []
     @State private var newCardTags = ""
