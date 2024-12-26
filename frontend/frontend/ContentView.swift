@@ -504,6 +504,7 @@ struct TagDetailView: View {
                                 )
                                 .font(.title)
                                 .fontWeight(.medium)
+                                .lineSpacing(4)
                                 .padding(.bottom, 8)
                             }
 
