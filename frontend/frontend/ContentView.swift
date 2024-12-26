@@ -129,6 +129,7 @@ struct ContentView: View {
                     if let tag = selectedTag {
                         Text(">")
                             .font(.helvetica(size: 12))
+                            .padding(.horizontal, 8)
                         Text(tag)
                             .font(.helvetica(size: 12))
                             .padding(.vertical, 8)
@@ -501,7 +502,9 @@ struct TagDetailView: View {
                                         card.front.replacingOccurrences(
                                             of: "/n", with: ""))
                                 )
-                                .font(.headline)
+                                .font(.title)
+                                .fontWeight(.medium)
+                                .padding(.bottom, 8)
                             }
 
                             Spacer()
@@ -539,7 +542,7 @@ struct TagDetailView: View {
                                                 from: bulletFormatted)
 
                                             Text(AttributedString(formattedText))
-                                                .font(.system(size: 16.8))
+                                                .font(.system(size: 14))
                                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                                 .textSelection(.enabled)
                                                 .lineSpacing(4)
@@ -661,6 +664,7 @@ struct TagDetailView: View {
                                     NSCursor.arrow.set()
                                 }
                             }.keyboardShortcut("e", modifiers: [.command])
+                            .frame(width: 80, alignment: .leading)
                         }
                         Spacer()
                         HStack {
