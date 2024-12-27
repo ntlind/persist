@@ -1,0 +1,6 @@
+- write readme
+- bundine into .app
+- add notifications
+- ✓ add pre-commit hooks
+- ✓ add GitHub workflows
+- ✓ add dependency installation script

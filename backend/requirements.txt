@@ -1,0 +1,7 @@
+pre-commit==3.6.0
+black==23.12.1
+flake8==7.0.0
+fastapi==0.109.2
+uvicorn==0.27.1
+polars==0.20.6
+sqlite3-api==2.0.1

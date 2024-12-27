@@ -155,7 +155,6 @@ struct ContentView: View {
                         .replacingOccurrences(of: " ", with: "_")
                     TagDetailView(
                         cards: cards.filter { card in
-                            if selectedTag == "All Cards" { return true }
                             let formattedTags = formattedTag.split(separator: ",").map(String.init)
                             return formattedTags.allSatisfy { tag in
                                 card.tags.contains(tag.trimmingCharacters(in: .whitespaces))
@@ -474,8 +473,8 @@ struct TagDetailView: View {
                                 )
                                 .font(.title)
                                 .fontWeight(.medium)
-                                .lineSpacing(4)
-                                .padding(.bottom, 8)
+                                .lineSpacing(8)
+                                .padding(.bottom, 4)
                             }
 
                             Spacer()
@@ -810,26 +809,18 @@ struct TagsView: View {
     @State private var searchText: String = ""
 
     private var uniqueTags: [String] {
-        var tags: [String] = ["All Cards"]
+        var tags = Set<String>()
         cards.forEach { card in
-            tags.append(
-                contentsOf: card.tags.map { tag in
+            tags.formUnion(
+                card.tags.map { tag in
                     tag.replacingOccurrences(of: "_", with: " ")
                         .split(separator: " ")
                         .map { $0.capitalized }
                         .joined(separator: " ")
                 })
         }
-        tags = Array(Set(tags))
-        if let allCardsIndex = tags.firstIndex(of: "All Cards") {
-            tags.remove(at: allCardsIndex)
-            tags.insert("All Cards", at: 0)
-        }
-        return tags.sorted { lhs, rhs in
-            if lhs == "All Cards" { return true }
-            if rhs == "All Cards" { return false }
-            return lhs < rhs
-        }
+        let allTags: [String] = Array(tags).sorted()
+        return allTags
     }
 
     private var filteredTags: [String] {
@@ -846,8 +837,6 @@ struct TagsView: View {
 
     private var tagCounts: [String: Int] {
         var counts: [String: Int] = [:]
-        counts["All Cards"] = cards.count
-
         for card in cards {
             for tag in card.tags {
                 let formattedTag = tag.replacingOccurrences(of: "_", with: " ")
