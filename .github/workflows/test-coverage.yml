@@ -29,4 +29,3 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           make test
-          make clean
