@@ -1,5 +1,6 @@
 [run]
 source =
+    .
     core
     main.py
 omit =

@@ -28,7 +28,8 @@ jobs:
         run: |
           cd backend
           PYTHONPATH=$PWD python -m pytest \
-            --cov=. \
+            --cov=core \
+            --cov=main.py \
             --cov-report=term-missing \
             --cov-report=html \
             --cov-config=.coveragerc \
