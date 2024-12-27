@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 import json
 from core import card_processing
 
+
 app = FastAPI()
 
 

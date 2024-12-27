@@ -1,8 +1,6 @@
-# Development server
 run-dev:
 	cd backend && uvicorn main:app --reload
 
-# Production server
 run-prod:
 	cd backend && uvicorn main:app --host 0.0.0.0 --port 8000
 
@@ -18,8 +16,7 @@ install-dev:
 	pre-commit install
 
 test:
-	cd backend && PYTHONPATH=. python -m pytest --cov=. --cov-report=term-missing --cov-report=xml --cov-report=html --cov-config=.coveragerc tests/
-	@echo "\nHTML coverage report generated in backend/htmlcov/index.html"
+	cd backend && PYTHONPATH=$(PWD)/backend python -m pytest -v --cov=api --cov=core --cov-report=term-missing --cov-report=html --cov-config=.coveragerc tests/ --cov-fail-under=80
 	$(MAKE) clean
 
 lint:
