@@ -1,7 +1,7 @@
 [run]
 source =
     core
-    main.py
+    api
 omit =
     */tests/*
     */test_*.py
