@@ -4,7 +4,7 @@ from api.main import app
 import json
 from unittest.mock import patch
 
-client = TestClient(app)
+client = TestClient(app=app)
 
 valid_card = {
     "front": "Hello",
