@@ -23,8 +23,16 @@ jobs:
           make install-dev
 
       - name: Run tests with coverage
-        env:
-          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
-          make test
-          make clean
+          cd backend
+          python -m pytest \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=html \
+            --cov-config=.coveragerc \
+            tests/ \
+            --cov-fail-under=100
+
+      - name: Clean up
+        if: always()
+        run: make clean
