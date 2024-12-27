@@ -2,6 +2,8 @@ name: Test Coverage Check
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -25,7 +27,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           cd backend
-          python -m pytest \
+          PYTHONPATH=$PWD python -m pytest \
             --cov=. \
             --cov-report=term-missing \
             --cov-report=html \
