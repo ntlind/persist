@@ -155,6 +155,7 @@ struct ContentView: View {
                         .replacingOccurrences(of: " ", with: "_")
                     TagDetailView(
                         cards: cards.filter { card in
+                            if selectedTag == "All Cards" { return true }
                             let formattedTags = formattedTag.split(separator: ",").map(String.init)
                             return formattedTags.allSatisfy { tag in
                                 card.tags.contains(tag.trimmingCharacters(in: .whitespaces))
@@ -809,18 +810,26 @@ struct TagsView: View {
     @State private var searchText: String = ""
 
     private var uniqueTags: [String] {
-        var tags = Set<String>()
+        var tags: [String] = ["All Cards"]
         cards.forEach { card in
-            tags.formUnion(
-                card.tags.map { tag in
+            tags.append(
+                contentsOf: card.tags.map { tag in
                     tag.replacingOccurrences(of: "_", with: " ")
                         .split(separator: " ")
                         .map { $0.capitalized }
                         .joined(separator: " ")
                 })
         }
-        let allTags: [String] = Array(tags).sorted()
-        return allTags
+        tags = Array(Set(tags))
+        if let allCardsIndex = tags.firstIndex(of: "All Cards") {
+            tags.remove(at: allCardsIndex)
+            tags.insert("All Cards", at: 0)
+        }
+        return tags.sorted { lhs, rhs in
+            if lhs == "All Cards" { return true }
+            if rhs == "All Cards" { return false }
+            return lhs < rhs
+        }
     }
 
     private var filteredTags: [String] {
@@ -837,6 +846,8 @@ struct TagsView: View {
 
     private var tagCounts: [String: Int] {
         var counts: [String: Int] = [:]
+        counts["All Cards"] = cards.count
+
         for card in cards {
             for tag in card.tags {
                 let formattedTag = tag.replacingOccurrences(of: "_", with: " ")
