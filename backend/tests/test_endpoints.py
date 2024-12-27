@@ -1,10 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import create_app
+from main import app
 import json
 from unittest.mock import patch
 
-app = create_app()
 client = TestClient(app)
 
 valid_card = {
