@@ -1,0 +1,14 @@
+[run]
+source =
+    core
+    main.py
+omit =
+    */tests/*
+    */test_*.py
+    tests/*
+    */venv/*
+    setup.py
+
+[paths]
+source =
+    backend/

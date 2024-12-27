@@ -1,5 +1,4 @@
 *.xcuserstate
 *.DS_Store
 *.pyc
-+ backend/htmlcov/
-+ .coverage
+*.coverage
