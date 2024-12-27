@@ -16,8 +16,8 @@ install-dev:
 	pre-commit install
 
 test:
-	cd backend && PYTHONPATH=$(PWD)/backend python -m pytest -v --cov=api --cov=core --cov-report=term-missing --cov-report=html --cov-config=.coveragerc tests/ --cov-fail-under=80; \
-	-$(MAKE) clean
+	cd backend && PYTHONPATH=$(PWD)/backend python -m pytest -v --cov=api --cov=core --cov-report=term-missing --cov-report=html --cov-config=.coveragerc tests/ --cov-fail-under=80
+	$(MAKE) clean
 
 lint:
 	pre-commit run --all-files
