@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "pip"
 
       - name: Install dependencies
@@ -26,16 +26,5 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          cd backend
-          PYTHONPATH=$PWD python -m pytest \
-            --cov=core \
-            --cov=main.py \
-            --cov-report=term-missing \
-            --cov-report=html \
-            --cov-config=.coveragerc \
-            tests/ \
-            --cov-fail-under=100
-
-      - name: Clean up
-        if: always()
-        run: make clean
+          make test
+          make clean
