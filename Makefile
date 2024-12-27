@@ -18,7 +18,7 @@ install-dev:
 	pre-commit install
 
 test:
-	cd backend && python -m pytest --cov=backend --cov-report=term-missing --cov-report=xml --cov-report=html tests/
+	cd backend && PYTHONPATH=. python -m pytest --cov=. --cov-report=term-missing --cov-report=xml --cov-report=html --cov-config=.coveragerc tests/
 	@echo "\nHTML coverage report generated in backend/htmlcov/index.html"
 	$(MAKE) clean
 

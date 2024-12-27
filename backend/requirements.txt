@@ -7,3 +7,4 @@ polars==0.20.6
 sqlite3-api==2.0.1
 pytest-cov
 pytest
+httpx
