@@ -112,94 +112,6 @@ def load_cards() -> List[Dict[str, Any]]:
     return cards
 
 
-def save_cards(cards: List[Dict[str, Any]]) -> None:
-    """Save multiple cards to the SQLite database.
-
-    Parameters
-    ----------
-    cards : list of dict
-        List of card dictionaries to save. Each dictionary must contain:
-
-        - id : int
-            Card identifier
-        - front : str
-            Front side text
-        - back : str
-            Back side text
-        - retired : bool
-            Retirement status
-        - streak : int
-            Current streak
-        - answers : dict
-            Dictionary with keys 'correct', 'partial', 'incorrect'
-        - tags : list of str
-            List of tag strings
-
-    Notes
-    -----
-    This function updates existing cards and their associated tags in the database.
-    It will create new tags if they don't exist.
-
-    See Also
-    --------
-    update_cards : Alternative method for bulk updates with error handling
-    add_cards : Method for adding new cards to the database
-    """
-    db_path = Path(__file__).parent.parent / "data" / "cards.db"
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    for card in cards:
-        cursor.execute(
-            """
-            UPDATE cards
-            SET front = ?, back = ?, retired = ?, streak = ?
-            WHERE id = ?
-        """,
-            (
-                card["front"],
-                card["back"],
-                card["retired"],
-                card["streak"],
-                card["id"],
-            ),
-        )
-
-        cursor.execute(
-            """
-            UPDATE answers
-            SET correct = ?, partial = ?, incorrect = ?
-            WHERE id = (SELECT answers_id FROM cards WHERE id = ?)
-        """,
-            (
-                card["answers"]["correct"],
-                card["answers"]["partial"],
-                card["answers"]["incorrect"],
-                card["id"],
-            ),
-        )
-
-        cursor.execute(
-            "DELETE FROM card_tags WHERE card_id = ?", (card["id"],)
-        )
-        for tag in card["tags"]:
-            cursor.execute(
-                "INSERT OR IGNORE INTO tags (name) VALUES (?)", (tag.lower(),)
-            )
-            cursor.execute(
-                "SELECT id FROM tags WHERE name = ?", (tag.lower(),)
-            )
-            tag_id = cursor.fetchone()[0]
-            cursor.execute(
-                "INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)",
-                (card["id"], tag_id),
-            )
-
-    conn.commit()
-    conn.close()
-    print(f"Successfully updated {len(cards)} cards")
-
-
 def update_cards(cards: List[Dict[str, Any]]) -> None:
     """Update multiple cards in bulk with transaction support.
 
@@ -294,7 +206,6 @@ def update_cards(cards: List[Dict[str, Any]]) -> None:
                     (card["id"], tag_id),
                 )
 
-        # Commit the transaction
         cursor.execute("COMMIT")
         print(f"Successfully updated {len(cards)} cards in bulk")
 
@@ -332,11 +243,6 @@ def add_cards(new_cards: List[Dict[str, Union[str, List[str]]]]) -> None:
     - Initializes retired status as False and streak as 0
     - Creates new tags if they don't exist in the database
     - Associates cards with their tags
-
-    See Also
-    --------
-    save_cards : Update existing cards in the database
-    update_cards : Bulk update existing cards with transaction support
     """
     db_path = Path(__file__).parent.parent / "data" / "cards.db"
     conn = sqlite3.connect(db_path)

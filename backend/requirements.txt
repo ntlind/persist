@@ -5,3 +5,5 @@ fastapi==0.109.2
 uvicorn==0.27.1
 polars==0.20.6
 sqlite3-api==2.0.1
+pytest-cov
+pytest

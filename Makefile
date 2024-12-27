@@ -18,7 +18,9 @@ install-dev:
 	pre-commit install
 
 test:
-	cd backend && python -m pytest
+	cd backend && python -m pytest --cov=backend --cov-report=term-missing --cov-report=xml --cov-report=html tests/
+	@echo "\nHTML coverage report generated in backend/htmlcov/index.html"
+	$(MAKE) clean
 
 lint:
 	pre-commit run --all-files
@@ -29,6 +31,7 @@ clean:
 	find . -type f -name "*.pyo" -delete
 	find . -type f -name "*.pyd" -delete
 	find . -type f -name ".coverage" -delete
+	find . -type f -name "coverage.xml" -delete
 	find . -type d -name "*.egg-info" -exec rm -r {} +
 	find . -type d -name "*.egg" -exec rm -r {} +
 	find . -type d -name ".pytest_cache" -exec rm -r {} +

@@ -26,7 +26,7 @@ struct Answers: Codable {
     var incorrect: Int
 }
 
-struct ContentView: View {
+struct CardView: View {
     @State private var allCards: [Card] = []
     @State private var cards: [Card] = []
     @State private var isLoading: Bool = true
@@ -590,9 +590,17 @@ struct TagDetailView: View {
 
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isEditing ? Color.orange : Color.clear, lineWidth: 2)
+                                .shadow(color: Color.orange.opacity(0.5), radius: 10, x: 0, y: 0)
+                                .opacity(isEditing ? 1 : 0)
+
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.orange, lineWidth: 2)
+                                .shadow(color: Color.orange.opacity(0.5), radius: 10, x: 0, y: 0)
+                                .opacity(localCards[currentIndex].retired ? 1 : 0)
                         }
                         .animation(.easeOut(duration: 0.3), value: showCorrectBorder)
                         .animation(.easeOut(duration: 0.3), value: showIncorrectBorder)
+                        .animation(.easeOut(duration: 0.3), value: localCards[currentIndex].retired)
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     HStack {
@@ -1289,7 +1297,7 @@ struct CardEditorView: View {
             )
         }
 
-        guard let url = URL(string: "http://127.0.0.1:8000/update_cards") else { return }
+        guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -1321,5 +1329,5 @@ extension Array {
 }
 
 #Preview {
-    ContentView()
+    CardView()
 }
