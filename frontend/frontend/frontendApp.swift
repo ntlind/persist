@@ -1,10 +1,3 @@
-//
-//  frontendApp.swift
-//  frontend
-//
-//  Created by Nick on 12/22/24.
-//
-
 import SwiftUI
 
 @main

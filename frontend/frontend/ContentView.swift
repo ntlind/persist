@@ -1,13 +1,5 @@
 import SwiftUI
 
-// TODO refactor views
-// TODO remove comments
-//  TODO add types
-// make header font scale with window size
-// ability to look at all cards in a list and/or expert them
-// TODO when you add a tag in the single card mode, you can't filter on it in Your Tags
-// TODO make it so retiring a card doesn't shift the arrow keys
-// TODO make it so the scroll is visible at all times
 struct Card: Codable, Identifiable {
     let id: Int
     var front: String
@@ -32,49 +24,6 @@ struct Answers: Codable {
     var correct: Int
     var partial: Int
     var incorrect: Int
-}
-
-struct MacOSTextField: NSViewRepresentable {
-    @Binding var text: String
-    var placeholder: String
-
-    func makeNSView(context: Context) -> NSTextField {
-        let textField = NSTextField()
-        textField.placeholderString = placeholder
-        textField.delegate = context.coordinator
-        textField.backgroundColor = .clear
-        textField.isBordered = true
-        textField.bezelStyle = .roundedBezel
-
-        textField.isSelectable = true
-        textField.cell?.isScrollable = true
-        textField.cell?.wraps = false
-        textField.cell?.usesSingleLineMode = true
-
-        return textField
-    }
-
-    func updateNSView(_ nsView: NSTextField, context: Context) {
-        nsView.stringValue = text
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-
-    class Coordinator: NSObject, NSTextFieldDelegate {
-        var text: Binding<String>
-
-        init(text: Binding<String>) {
-            self.text = text
-        }
-
-        func controlTextDidChange(_ obj: Notification) {
-            if let textField = obj.object as? NSTextField {
-                self.text.wrappedValue = textField.stringValue
-            }
-        }
-    }
 }
 
 struct ContentView: View {
@@ -373,7 +322,6 @@ struct ContentView: View {
 
         switch selectedCardOrder {
         case .inOrder:
-            // Keep original order
             break
         case .random:
             sortedCards.shuffle()
@@ -389,7 +337,7 @@ struct ContentView: View {
                 let ratio2 =
                     $1.answers.correct == 0
                     ? 0 : Double($1.answers.incorrect) / Double($1.answers.correct)
-                return ratio1 > ratio2  // Higher ratio means more incorrect answers
+                return ratio1 > ratio2
             }
         }
 
@@ -652,6 +600,7 @@ struct TagDetailView: View {
                             Image(systemName: "xmark.circle")
                                 .foregroundColor(.white)
                                 .font(.system(size: 20))
+                                .frame(width: 80, alignment: .leading)
                         } else {
                             Button(action: {
                                 if isEditing {
@@ -857,7 +806,7 @@ struct TagsView: View {
     let cards: [Card]
     let isLoading: Bool
     let onTagSelected: (String) -> Void
-    @State private var searchText = ""
+    @State private var searchText: String = ""
 
     private var uniqueTags: [String] {
         var tags = Set<String>()
@@ -870,7 +819,7 @@ struct TagsView: View {
                         .joined(separator: " ")
                 })
         }
-        let allTags = Array(tags).sorted()
+        let allTags: [String] = Array(tags).sorted()
         return allTags
     }
 
@@ -913,8 +862,8 @@ struct TagsView: View {
                         .padding(.horizontal)
                         .padding(.top)
 
-                    MacOSTextField(text: $searchText, placeholder: "Search tags...")
-                        .frame(maxWidth: .infinity)
+                    TextField("Search tags...", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
                         .padding(.vertical, 8)
 
@@ -1015,11 +964,11 @@ struct NewCard: Encodable {
 
 struct CardCreatorView: View {
     @Binding var isShowing: Bool
-    @State private var frontBackDelimiter = " => "
-    @State private var cardDelimiter = "&&&"
-    @State private var sourceText = ""
+    @State private var frontBackDelimiter: String = " => "
+    @State private var cardDelimiter: String = "&&&"
+    @State private var sourceText: String = ""
     @State private var parsedCards: [(front: String, back: String)] = []
-    @State private var newCardTags = ""
+    @State private var newCardTags: String = ""
     var onSave: () -> Void
 
     var body: some View {
@@ -1199,7 +1148,6 @@ struct ReportCardView: View {
                     Text("Incorrect: \(incorrectCount)")
                 }
 
-                // Simple bar graph
                 GeometryReader { geometry in
                     let total = CGFloat(correctCount + incorrectCount)
                     let correctWidth =
@@ -1306,7 +1254,6 @@ struct CardEditorView: View {
             .filter { !$0.isEmpty }
 
         let updatedCards = sections.enumerated().compactMap { index, section -> Card? in
-            // Extract tags if present
             let tagPattern = "\\[tags:([^\\]]+)\\]"
             let tagRegex = try? NSRegularExpression(pattern: tagPattern)
             let nsString = section as NSString
@@ -1322,7 +1269,6 @@ struct CardEditorView: View {
                 tags = cards[safe: index]?.tags ?? []
             }
 
-            // Remove tags section from content before splitting front/back
             let contentWithoutTags = section.replacingOccurrences(
                 of: "\\[tags:[^\\]]+\\]", with: "", options: .regularExpression)
             let parts = contentWithoutTags.components(separatedBy: frontBackDelimiter)
