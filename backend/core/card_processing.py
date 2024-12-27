@@ -1,23 +1,49 @@
 import json
 from pathlib import Path
-import polars as pl
 import sqlite3
+from typing import List, Dict, Any, Union
 
 
-def build_index_from_cards():
-    pass
+def load_cards() -> List[Dict[str, Any]]:
+    """Load all flashcards from the SQLite database.
 
+    Parameters
+    ----------
+    None
 
-def dict_factory(cursor, row):
-    """Convert SQLite rows to dictionaries"""
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+    Returns
+    -------
+    list of dict
+        List of dictionaries containing card information with fields:
 
+        - id : int
+            Unique identifier for the card
+        - front : str
+            Front side text of the flashcard
+        - back : str
+            Back side text of the flashcard
+        - last_asked : str
+            Date when card was last reviewed (YYYY-MM-DD format)
+        - next_review : str
+            Date when card should be reviewed next (YYYY-MM-DD format)
+        - retired : bool
+            Whether the card has been retired from active review
+        - tags : list of str
+            List of strings containing card tags
+        - images : list
+            List of image references associated with the card
+        - answers : dict
+            Dictionary containing review statistics with fields:
+            - correct : int
+                Number of correct answers
+            - partial : int
+                Number of partial answers
+            - incorrect : int
+                Number of incorrect answers
+        - streak : int
+            Current streak of correct answers
 
-def load_cards():
-    """Load all cards from the SQLite database"""
+    """
     db_path = Path(__file__).parent.parent / "data" / "cards.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -86,90 +112,47 @@ def load_cards():
     return cards
 
 
-def convert_file_to_cards(
-    file_path, front_back_delimiter="=>", card_delimiter="--------------"
-):
-    with open(file_path, "r") as f:
-        full_text = f.read()
+def save_cards(cards: List[Dict[str, Any]]) -> None:
+    """Save multiple cards to the SQLite database.
 
-    sections = full_text.split(card_delimiter)
-    sections = [s.strip() for s in sections if s.strip()]
+    Parameters
+    ----------
+    cards : list of dict
+        List of card dictionaries to save. Each dictionary must contain:
 
-    all_cards = []
+        - id : int
+            Card identifier
+        - front : str
+            Front side text
+        - back : str
+            Back side text
+        - retired : bool
+            Retirement status
+        - streak : int
+            Current streak
+        - answers : dict
+            Dictionary with keys 'correct', 'partial', 'incorrect'
+        - tags : list of str
+            List of tag strings
 
-    for section in sections:
-        if "=>" in section:
-            front, back = section.split(front_back_delimiter, 1)
-            card = {"front": front.strip(), "back": back.strip()}
-            all_cards.append(card)
+    Notes
+    -----
+    This function updates existing cards and their associated tags in the database.
+    It will create new tags if they don't exist.
 
-    output_path = Path(f"backend/data/{Path(file_path).stem}.json")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "w") as f:
-        json.dump(all_cards, f, indent=2)
-
-    print(f"Successfully processed {len(all_cards)} cards")
-    return all_cards
-
-
-def load_filtered_cards(
-    parquet_path, tags=None, date_range=None, retired=None
-):
+    See Also
+    --------
+    update_cards : Alternative method for bulk updates with error handling
+    add_cards : Method for adding new cards to the database
     """
-    Load cards from parquet file with filtering on tags, date ranges, and retired status
-
-    Args:
-        parquet_path (str): Path to parquet file
-        tags (list): List of tags to filter on. If any tag matches, include the card
-        date_range (dict): Dictionary with 'start' and 'end' dates in format 'YYYY-MM-DD'
-        retired (bool): Filter for retired status (True/False), or None for all cards
-
-    Example usage:
-    load_filtered_cards(
-        'backend/data/cards.parquet',
-        tags=['computer_science', 'llms'],
-        date_range={'start': '2024-03-01', 'end': '2024-03-31'},
-        retired=False
-    )
-    """
-    # Read parquet file
-    df = pl.read_parquet(parquet_path)
-
-    # Filter by tags if specified
-    if tags:
-        df = df.filter(pl.col("tags").list.contains(tags))
-
-    # Filter by date range if specified
-    if date_range:
-        df = df.with_columns(
-            pl.col("next_review").str.strptime(pl.Date, "%Y-%m-%d")
-        )
-        df = df.filter(
-            (pl.col("next_review") >= date_range["start"])
-            & (pl.col("next_review") <= date_range["end"])
-        )
-        # Convert back to string format
-        df = df.with_columns(pl.col("next_review").dt.strftime("%Y-%m-%d"))
-
-    # Filter by retired status if specified
-    if retired is not None:
-        df = df.filter(pl.col("retired") == retired)
-
-    # Convert to Python dictionaries
-    return df.to_dicts()
-
-
-def save_cards(cards):
     db_path = Path(__file__).parent.parent / "data" / "cards.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     for card in cards:
-        # Update card content
         cursor.execute(
             """
-            UPDATE cards 
+            UPDATE cards
             SET front = ?, back = ?, retired = ?, streak = ?
             WHERE id = ?
         """,
@@ -182,10 +165,9 @@ def save_cards(cards):
             ),
         )
 
-        # Update answers
         cursor.execute(
             """
-            UPDATE answers 
+            UPDATE answers
             SET correct = ?, partial = ?, incorrect = ?
             WHERE id = (SELECT answers_id FROM cards WHERE id = ?)
         """,
@@ -197,7 +179,6 @@ def save_cards(cards):
             ),
         )
 
-        # Update tags
         cursor.execute(
             "DELETE FROM card_tags WHERE card_id = ?", (card["id"],)
         )
@@ -219,26 +200,57 @@ def save_cards(cards):
     print(f"Successfully updated {len(cards)} cards")
 
 
-def update_cards(cards):
-    """Update multiple cards in bulk, preserving their IDs and metadata"""
+def update_cards(cards: List[Dict[str, Any]]) -> None:
+    """Update multiple cards in bulk with transaction support.
+
+    Parameters
+    ----------
+    cards : list of dict
+        List of card dictionaries to update. Each dictionary must contain:
+
+        - id : int
+            Card identifier (must exist in database)
+        - front : str
+            Front side text
+        - back : str
+            Back side text
+        - retired : bool
+            Retirement status
+        - streak : int
+            Current streak
+        - answers : dict
+            Dictionary with keys 'correct', 'partial', 'incorrect'
+        - tags : list of str
+            List of tag strings
+
+    Raises
+    ------
+    ValueError
+        If a card with the specified ID is not found in the database
+    Exception
+        If any database operation fails, the entire transaction is rolled back
+
+    Notes
+    -----
+    This function performs all updates within a single transaction,
+    ensuring database consistency. If any operation fails, all changes
+    are rolled back.
+    """
     db_path = Path(__file__).parent.parent / "data" / "cards.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     try:
-        # Start a transaction
         cursor.execute("BEGIN TRANSACTION")
 
         for card in cards:
-            # Verify card exists
             cursor.execute("SELECT id FROM cards WHERE id = ?", (card["id"],))
             if not cursor.fetchone():
                 raise ValueError(f"Card with ID {card['id']} not found")
 
-            # Update card content
             cursor.execute(
                 """
-                UPDATE cards 
+                UPDATE cards
                 SET front = ?, back = ?, retired = ?, streak = ?
                 WHERE id = ?
                 """,
@@ -251,10 +263,9 @@ def update_cards(cards):
                 ),
             )
 
-            # Update answers
             cursor.execute(
                 """
-                UPDATE answers 
+                UPDATE answers
                 SET correct = ?, partial = ?, incorrect = ?
                 WHERE id = (SELECT answers_id FROM cards WHERE id = ?)
                 """,
@@ -266,7 +277,6 @@ def update_cards(cards):
                 ),
             )
 
-            # Update tags
             cursor.execute(
                 "DELETE FROM card_tags WHERE card_id = ?", (card["id"],)
             )
@@ -298,8 +308,36 @@ def update_cards(cards):
         conn.close()
 
 
-def add_cards(new_cards):
-    """Add new cards to the SQLite database"""
+def add_cards(new_cards: List[Dict[str, Union[str, List[str]]]]) -> None:
+    """Add new flashcards to the SQLite database.
+
+    Parameters
+    ----------
+    new_cards : list of dict
+        List of new card dictionaries. Each dictionary must contain:
+
+        - front : str
+            Front side text
+        - back : str
+            Back side text
+        - tags : list of str
+            List of tag strings
+
+    Notes
+    -----
+    The function automatically:
+
+    - Creates new answer records with zero counts
+    - Sets default values for last_asked and next_review to '2024-01-01'
+    - Initializes retired status as False and streak as 0
+    - Creates new tags if they don't exist in the database
+    - Associates cards with their tags
+
+    See Also
+    --------
+    save_cards : Update existing cards in the database
+    update_cards : Bulk update existing cards with transaction support
+    """
     db_path = Path(__file__).parent.parent / "data" / "cards.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -329,7 +367,6 @@ def add_cards(new_cards):
         )
         card_id = cursor.lastrowid
 
-        # Add tags
         for tag in card["tags"]:
             cursor.execute(
                 "INSERT OR IGNORE INTO tags (name) VALUES (?)", (tag.lower(),)
