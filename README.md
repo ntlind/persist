@@ -6,12 +6,14 @@ A modern flashcard application built with Swift and Python.
 
 I used to be a frequent Quizlet user, but I grew tired of how cumbersome it was to add and enhance my flashcards. This app offers several improvements that make it more suitable for everyday use:
 
-- Easy editing and modification of flashcards
-- Tag-based organization (where one card can appear in multiple sets)
-- Streak and incorrect/correct ratio tracking and sorting
-- macOS notifications to nudge behavior
-- Image support
-- Keyboard shortcuts
+- 📝 Easy editing and modification of flashcards
+- 🏷️ Tag-based organization (where one card can appear in multiple sets)
+- 📊 Streak and incorrect/correct ratio tracking and sorting
+- 🔔 macOS notifications to nudge behavior
+- 🖼️ Image support
+- ⌨  Keyboard shortcuts
+
+![Flashcard example](https://github.com/ntlind/persist/blob/main/assets/example.png?raw=true)
 
 ## Prerequisites
 
@@ -39,7 +41,6 @@ I used to be a frequent Quizlet user, but I grew tired of how cumbersome it was 
     Running `make install-dev` will install pre-commit hooks that:
     - Format Python code with Black
     - Lint Python code with Flake8
-    - Format Swift code with swift-format
     - Check for common issues (trailing whitespace, merge conflicts, etc.)
 
 
