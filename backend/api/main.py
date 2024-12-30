@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 import json
 from core import card_processing
+import os
 
 
 app = FastAPI()
@@ -113,3 +114,14 @@ async def add_cards(request: Request):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
+@app.post("/shutdown")
+async def shutdown():
+    """Shutdown the backend server"""
+    os._exit(0)  # Force immediate shutdown

@@ -1,6 +1,12 @@
 - write readme
 - bundine into .app
 - add notifications
-- ✓ add pre-commit hooks
-- ✓ add GitHub workflows
-- ✓ add dependency installation script
+- markdown support
+- fix question mark menu
+- make the app name say Persist instead of frontend when running
+- add app icon
+- on close, have the app close the backend script
+- on close, have the app update cards.db in the github
+- change pencil icon
+- add button to export cards.db to github
+- change port

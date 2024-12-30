@@ -1,8 +1,8 @@
 run-dev:
-	cd backend && uvicorn main:app --reload
+	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --reload
 
 run-prod:
-	cd backend && uvicorn main:app --host 0.0.0.0 --port 8000
+	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --host 0.0.0.0 --port 2789
 
 generate-certs:
 	cd backend && openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
@@ -32,39 +32,37 @@ clean:
 	find . -type d -name "*.egg-info" -exec rm -r {} +
 	find . -type d -name "*.egg" -exec rm -r {} +
 	find . -type d -name ".pytest_cache" -exec rm -r {} +
+	find . -type d -name "venv" -exec rm -r {} +
+	find . -type d -name "dist" -exec rm -r {} +
+	find . -type d -name "build" -exec rm -r {} +
 
 db-init:
-	cd backend && python scripts/init_db.py
+	cd backend && PYTHONPATH=$(PWD)/backend python scripts/init_db.py
 
 db-migrate:
-	cd backend && alembic upgrade head
+	cd backend && PYTHONPATH=$(PWD)/backend alembic upgrade head
 
 db-rollback:
-	cd backend && alembic downgrade -1
+	cd backend && PYTHONPATH=$(PWD)/backend alembic downgrade -1
 
 xcode:
-	open frontend/frontend.xcodeproj
+	open frontend/Persist.xcodeproj
 
 build-frontend:
-	xcodebuild -project frontend/frontend.xcodeproj -scheme frontend -configuration Debug build
+	xcodebuild -project frontend/Persist.xcodeproj -scheme Persist -configuration Release -derivedDataPath build
 
-help:
-	@echo "Available commands:"
-	@echo "Backend commands:"
-	@echo "  run-dev      : Start development server with auto-reload"
-	@echo "  run-prod     : Start production server"
-	@echo "  install      : Install Python dependencies"
-	@echo "  install-dev  : Install development dependencies including pre-commit"
-	@echo "  test         : Run tests"
-	@echo "  lint         : Run pre-commit hooks on all files"
-	@echo "  clean        : Remove Python cache files"
-	@echo "  generate-certs: Generate SSL certificates"
-	@echo "  db-init      : Initialize database"
-	@echo "  db-migrate   : Run database migrations"
-	@echo "  db-rollback  : Rollback last database migration"
-	@echo ""
-	@echo "Frontend commands:"
-	@echo "  xcode        : Open project in Xcode"
-	@echo "  build-frontend: Build frontend using xcodebuild"
+bundle:
+	python3 scripts/create_bundle.py
 
-.PHONY: run-dev run-prod install install-dev test lint clean generate-certs db-init db-migrate db-rollback xcode build-frontend help
+debug-dist:
+	@echo "Checking app bundle structure..."
+	@ls -la dist/Persist.app/Contents/MacOS
+	@echo "\nChecking processes..."
+	@ps aux | grep backend_server
+	@echo "\nTrying to run app..."
+	@open dist/Persist.app
+	@sleep 2
+	@echo "\nChecking log..."
+	@cat dist/Persist.app/Contents/Resources/app.log || echo "No log file yet"
+
+.PHONY: run-dev run-prod install install-dev test lint clean generate-certs db-init db-migrate db-rollback xcode build-frontend bundle debug-dist
