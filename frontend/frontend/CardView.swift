@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct Card: Codable, Identifiable {
     let id: Int
@@ -32,8 +33,8 @@ struct CardView: View {
     @State private var isLoading: Bool = true
     @State private var selectedTag: String? = nil
     @State private var editTextTags: String = ""
-    @State private var showingHelp: Bool = false
-    @State private var showingSettings: Bool = false
+    @State private var showHelp: Bool = false
+    @State private var showSettings: Bool = false
     @State private var hideRetiredCards: Bool = true
     @State private var showCardCreator: Bool = false
     @State private var frontBackDelimiter: String = "=>"
@@ -47,6 +48,9 @@ struct CardView: View {
     @State private var showIncorrectBorder: Bool = false
     @State private var selectedCardOrder: CardOrder = .byStreak
     @State private var showCardEditor: Bool = false
+    @State private var showNotificationSettings: Bool = false
+    @State private var notificationInterval: Double = 24
+    @State private var notificationsEnabled: Bool = true
 
     enum CardOrder: String, CaseIterable {
         case inOrder = "In Order"
@@ -87,14 +91,14 @@ struct CardView: View {
                             .padding(.vertical, 8)
                     }
                     Spacer()
-                    Button(action: { showingSettings.toggle() }) {
+                    Button(action: { showSettings.toggle() }) {
                         Image(systemName: "questionmark.circle")
                             .font(.system(size: 20))
                             .foregroundColor(.white.opacity(0.8))
                     }
                     .buttonStyle(.plain)
                     .onHover { isHovered in
-                        showingHelp = isHovered
+                        showHelp = isHovered
                         if isHovered {
                             NSCursor.pointingHand.push()
                         } else {
@@ -116,7 +120,7 @@ struct CardView: View {
                         }
                     }
                     .padding(.trailing, 8)
-                    Button(action: { showingSettings.toggle() }) {
+                    Button(action: { showSettings.toggle() }) {
                         Image(systemName: "gear")
                             .font(.system(size: 20))
                             .foregroundColor(.white.opacity(0.8))
@@ -175,37 +179,30 @@ struct CardView: View {
                     )
                 }
             }
-            if showingHelp {
+            if showHelp {
                 Color.black.opacity(0.8)
                     .ignoresSafeArea()
                 KeyboardShortcutsView()
                     .transition(.opacity)
             }
-            if showingSettings {
+            if showSettings {
                 Color.black.opacity(0.8)
                     .ignoresSafeArea()
                     .onTapGesture {
-                        showingSettings = false
+                        showSettings = false
                     }
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 24) {
                     HStack {
                         Text("Settings")
                             .font(.title2)
                             .fontWeight(.bold)
                         Spacer()
-                        Button(action: { showingSettings = false }) {
+                        Button(action: { showSettings = false }) {
                             Image(systemName: "xmark")
                                 .foregroundColor(.white)
                         }
                         .buttonStyle(.plain)
                     }
-
-                    Toggle("Hide Retired Cards", isOn: $hideRetiredCards)
-                        .onChange(of: hideRetiredCards) { oldValue, newValue in
-                            cards = hideRetiredCards ? allCards.filter { !$0.retired } : allCards
-                            sortCards()
-                        }
-
                     VStack(alignment: .leading, spacing: 8) {
                         Picker("Card Order: ", selection: $selectedCardOrder) {
                             ForEach(CardOrder.allCases, id: \.self) { order in
@@ -215,6 +212,32 @@ struct CardView: View {
                         .pickerStyle(.menu)
                         .onChange(of: selectedCardOrder) { oldValue, newValue in
                             sortCards()
+                        }
+                    }
+                    Toggle("Hide Retired Cards", isOn: $hideRetiredCards)
+                        .onChange(of: hideRetiredCards) { oldValue, newValue in
+                            cards = hideRetiredCards ? allCards.filter { !$0.retired } : allCards
+                            sortCards()
+                        }
+                    Toggle("Enable Daily Notifications", isOn: $notificationsEnabled)
+                        .onChange(of: notificationsEnabled) { oldValue, newValue in
+                            if newValue {
+                                requestNotificationPermission()
+                                scheduleNotification()
+                            } else {
+                                UNUserNotificationCenter.current()
+                                    .removeAllPendingNotificationRequests()
+                            }
+                        }
+
+                    if notificationsEnabled {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Slider(value: $notificationInterval, in: 1...72, step: 1)
+                                .onChange(of: notificationInterval) { oldValue, newValue in
+                                    scheduleNotification()
+                                }
+                            Text("\(Int(notificationInterval)) hours")
+                                .foregroundColor(.gray)
                         }
                     }
                 }
@@ -342,6 +365,46 @@ struct CardView: View {
         }
 
         cards = sortedCards
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) {
+            granted, error in
+            DispatchQueue.main.async {
+                if granted {
+                    self.notificationsEnabled = true
+                    self.scheduleNotification()
+                } else {
+                    self.notificationsEnabled = false
+                }
+            }
+        }
+    }
+
+    private func scheduleNotification() {
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+
+        let content = UNMutableNotificationContent()
+        content.title = "Time to Study!"
+        content.body = "Consider reviewing your cards to keep your knowledge fresh."
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: notificationInterval * 3600,  // Convert hours to seconds
+            repeats: true
+        )
+
+        let request = UNNotificationRequest(
+            identifier: "studyReminder",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error scheduling notification: \(error)")
+            }
+        }
     }
 }
 

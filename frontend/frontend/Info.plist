@@ -19,5 +19,7 @@
         <key>NSTemporaryExceptionRequiresForwardSecrecy</key>
         <false/>
     </dict>
+    <key>NSUserNotificationAlertStyle</key>
+    <string>alert</string>
 </dict>
 </plist>
