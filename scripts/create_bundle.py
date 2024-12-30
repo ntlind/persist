@@ -23,7 +23,6 @@ def create_directory_structure():
         "Contents/Resources",
         "Contents/Frameworks",
         "Contents/Resources/backend",
-        "Contents/Resources/data",
     ]
 
     # Remove existing bundle if it exists
@@ -63,52 +62,6 @@ def build_frontend():
         ],
         check=True,
     )
-
-
-def create_info_plist(app_path):
-    """Create the Info.plist file.
-
-    Creates the Info.plist file in the app bundle with required metadata
-    for macOS applications.
-
-    Parameters
-    ----------
-    app_path : str
-        Path to the app bundle where Info.plist should be created
-    """
-    print("Creating Info.plist...")
-    info_plist = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>Persist</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.persist.app</string>
-    <key>CFBundleName</key>
-    <string>Persist</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.15</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.education</string>
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsLocalNetworking</key>
-        <true/>
-    </dict>
-</dict>
-</plist>
-"""
-    with open(os.path.join(app_path, "Contents/Info.plist"), "w") as f:
-        f.write(info_plist)
 
 
 def create_launcher_script(app_path):
@@ -234,7 +187,6 @@ def copy_backend(app_path):
     backend_files = [
         "api",
         "core",
-        "data",
         "requirements.txt",
     ]
 
@@ -245,6 +197,13 @@ def copy_backend(app_path):
             shutil.copytree(src, dst)
         else:
             shutil.copy2(src, dst)
+
+    # Copy cards.db if it exists
+    src_db = os.path.join("backend", "data", "cards.db")
+    dst_db = os.path.join(backend_path, "data", "cards.db")
+    if os.path.exists(src_db):
+        os.makedirs(os.path.dirname(dst_db), exist_ok=True)
+        shutil.copy2(src_db, dst_db)
 
     # Create virtualenv and install requirements
     print("Creating Python virtual environment...")
@@ -320,25 +279,6 @@ def copy_frontend(app_path):
     print(f"Created symlink: {frontend_link} -> {frontend_binary}")
 
 
-def copy_database(app_path):
-    """Copy database file if it exists.
-
-    Copies the cards.db file from backend/data to the app bundle's
-    Resources/data directory if it exists.
-
-    Parameters
-    ----------
-    app_path : str
-        Path to the app bundle where database should be copied
-    """
-    print("Copying database...")
-    src_db = "backend/data/cards.db"
-    if os.path.exists(src_db):
-        shutil.copy2(
-            src_db, os.path.join(app_path, "Contents/Resources/data/cards.db")
-        )
-
-
 def main():
     """Create the complete app bundle.
 
@@ -361,9 +301,6 @@ def main():
         # Build frontend
         build_frontend()
 
-        # Create Info.plist
-        create_info_plist(app_path)
-
         # Create launcher script
         create_launcher_script(app_path)
 
@@ -372,9 +309,6 @@ def main():
 
         # Copy frontend
         copy_frontend(app_path)
-
-        # Copy database
-        copy_database(app_path)
 
         print(f"\nApp bundle created successfully at {app_path}")
         print("\nTo test the app bundle, run: make debug-dist")

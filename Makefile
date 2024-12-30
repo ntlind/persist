@@ -1,5 +1,5 @@
 run-dev:
-	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --reload
+	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --reload --port 2789
 
 run-prod:
 	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --host 0.0.0.0 --port 2789
@@ -65,4 +65,9 @@ debug-dist:
 	@echo "\nChecking log..."
 	@cat dist/Persist.app/Contents/Resources/app.log || echo "No log file yet"
 
-.PHONY: run-dev run-prod install install-dev test lint clean generate-certs db-init db-migrate db-rollback xcode build-frontend bundle debug-dist
+copy-prod-db:
+	@if [ ! -d "backend/data" ]; then mkdir -p backend/data; fi
+	@cp dist/Persist.app/Contents/Resources/backend/data/cards.db backend/data/cards.db
+	@echo "Database copied from production app to backend/data/cards.db"
+
+.PHONY: run-dev run-prod install install-dev test lint clean generate-certs db-init db-migrate db-rollback xcode build-frontend bundle debug-dist copy-prod-db
