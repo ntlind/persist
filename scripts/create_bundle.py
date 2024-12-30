@@ -7,7 +7,16 @@ import stat
 
 
 def create_directory_structure():
-    """Create the basic app bundle directory structure"""
+    """Create the basic app bundle directory structure.
+
+    Creates a fresh Persist.app bundle with the required directory structure,
+    removing any existing bundle first.
+
+    Returns
+    -------
+    str
+        The path to the created app bundle (dist/Persist.app)
+    """
     app_path = "dist/Persist.app"
     dirs = [
         "Contents/MacOS",
@@ -29,7 +38,16 @@ def create_directory_structure():
 
 
 def build_frontend():
-    """Build the frontend using xcodebuild"""
+    """Build the frontend using xcodebuild.
+
+    Builds the Swift frontend app using xcodebuild in Release configuration.
+    Output is placed in the build/Build/Products/Release directory.
+
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the xcodebuild command fails
+    """
     print("Building frontend...")
     subprocess.run(
         [
@@ -48,7 +66,16 @@ def build_frontend():
 
 
 def create_info_plist(app_path):
-    """Create the Info.plist file"""
+    """Create the Info.plist file.
+
+    Creates the Info.plist file in the app bundle with required metadata
+    for macOS applications.
+
+    Parameters
+    ----------
+    app_path : str
+        Path to the app bundle where Info.plist should be created
+    """
     print("Creating Info.plist...")
     info_plist = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -85,7 +112,20 @@ def create_info_plist(app_path):
 
 
 def create_launcher_script(app_path):
-    """Create the launcher script that starts both backend and frontend"""
+    """Create the launcher script that starts both backend and frontend.
+
+    Creates an executable bash script that:
+    - Sets up logging
+    - Starts the Python backend server
+    - Waits for backend to be ready
+    - Launches the Swift frontend
+    - Handles cleanup on shutdown
+
+    Parameters
+    ----------
+    app_path : str
+        Path to the app bundle where the launcher script should be created
+    """
     print("Creating launcher script...")
     launcher = """#!/bin/bash
 set -e
@@ -123,7 +163,7 @@ BACKEND_PID=$!
 # Wait for backend to initialize
 echo "Waiting for backend to start..."
 for i in {1..30}; do
-    if curl -s http://127.0.0.1:2789/health >/dev/null; then
+    if curl -s http://127.0.0.1:8000/health >/dev/null; then
         echo "Backend started successfully with PID $BACKEND_PID"
         break
     fi
@@ -168,7 +208,24 @@ cleanup
 
 
 def copy_backend(app_path):
-    """Copy backend files and create virtualenv"""
+    """Copy backend files and create virtualenv.
+
+    Sets up the Python backend by:
+    - Copying backend source files
+    - Creating a virtual environment
+    - Installing dependencies
+    - Creating a backend launcher script
+
+    Parameters
+    ----------
+    app_path : str
+        Path to the app bundle where backend should be set up
+
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If virtual environment creation or pip install fails
+    """
     print("Setting up backend...")
     resources_path = os.path.join(app_path, "Contents/Resources")
     backend_path = os.path.join(resources_path, "backend")
@@ -221,7 +278,7 @@ source "$VENV_DIR/bin/activate"
 cd "$DIR"
 
 # Start backend server
-exec python -m uvicorn api.main:app --host 127.0.0.1 --port 2789 --log-level info
+exec python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --log-level info
 """
 
     backend_launcher_path = os.path.join(resources_path, "backend_server")
@@ -233,7 +290,16 @@ exec python -m uvicorn api.main:app --host 127.0.0.1 --port 2789 --log-level inf
 
 
 def copy_frontend(app_path):
-    """Copy built frontend binary and resources"""
+    """Copy built frontend binary and resources.
+
+    Copies the built frontend.app bundle into the main app bundle and
+    creates necessary symlinks.
+
+    Parameters
+    ----------
+    app_path : str
+        Path to the app bundle where frontend should be copied
+    """
     print("Copying frontend...")
     frontend_app_path = "build/Build/Products/Release/Persist.app"
 
@@ -255,7 +321,16 @@ def copy_frontend(app_path):
 
 
 def copy_database(app_path):
-    """Copy database file if it exists"""
+    """Copy database file if it exists.
+
+    Copies the cards.db file from backend/data to the app bundle's
+    Resources/data directory if it exists.
+
+    Parameters
+    ----------
+    app_path : str
+        Path to the app bundle where database should be copied
+    """
     print("Copying database...")
     src_db = "backend/data/cards.db"
     if os.path.exists(src_db):
@@ -265,6 +340,20 @@ def copy_database(app_path):
 
 
 def main():
+    """Create the complete app bundle.
+
+    Main entry point that:
+    1. Creates the app bundle structure
+    2. Builds the frontend
+    3. Creates required files and scripts
+    4. Copies backend and frontend components
+    5. Copies the database
+
+    Raises
+    ------
+    Exception
+        If any step of the bundle creation process fails
+    """
     try:
         # Create app bundle structure
         app_path = create_directory_structure()
