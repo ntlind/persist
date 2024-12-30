@@ -4,7 +4,7 @@ A modern flashcard application built with Swift and Python.
 
 ## Features
 
-I used to be a frequent Quizlet user, but I grew tired of how cumbersome it was to add and enhance my flashcards. This app offers several improvements that make it more suitable for everyday use:
+I used to be a frequent Quizlet user, but I grew tired of how cumbersome it was to add to and enhance my flashcards. This app offers several improvements that make it more suitable for everyday use:
 
 - 📝 Easy editing and modification of flashcards
 - 🏷️ Tag-based organization (where one card can appear in multiple sets)
