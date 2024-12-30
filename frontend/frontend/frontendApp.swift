@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct frontendApp: App {
+struct PersistApp: App {
     class AppDelegate: NSObject, NSApplicationDelegate {
         func applicationWillTerminate(_ notification: Notification) {
             if let url = URL(string: "http://127.0.0.1:8000/shutdown") {

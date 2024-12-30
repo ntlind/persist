@@ -136,9 +136,12 @@ done
 
 # Start frontend
 echo "Starting frontend..."
-open "$RESOURCES_DIR/frontend.app" &
+FRONTEND_APP="$RESOURCES_DIR/frontend.app"
+FRONTEND_BINARY="$FRONTEND_APP/Contents/MacOS/$(ls "$FRONTEND_APP/Contents/MacOS")"
+echo "Launching frontend binary: $FRONTEND_BINARY"
+"$FRONTEND_BINARY" &
 FRONTEND_PID=$!
-echo "Frontend launched"
+echo "Frontend launched with PID $FRONTEND_PID"
 
 # Handle shutdown
 cleanup() {
@@ -234,27 +237,15 @@ def copy_frontend(app_path):
     print("Copying frontend...")
     frontend_app_path = "build/Build/Products/Release/Persist.app"
 
-    # Add debug info
-    print(f"Looking for frontend app at: {frontend_app_path}")
-    if os.path.exists(frontend_app_path):
-        print("Frontend app bundle found")
-    else:
-        print("Available files in build directory:")
-        for root, dirs, files in os.walk("build"):
-            print(f"\nDirectory: {root}")
-            for file in files:
-                print(f"  {file}")
-        raise FileNotFoundError(
-            f"Frontend app bundle not found at {frontend_app_path}. Please ensure the build succeeded."
-        )
-
     # Copy the entire frontend.app bundle into the Persist.app bundle
     frontend_dest = os.path.join(app_path, "Contents/Resources/frontend.app")
     shutil.copytree(frontend_app_path, frontend_dest)
     print(f"Frontend app bundle copied to: {frontend_dest}")
 
     # Create a symlink to the frontend binary
-    frontend_binary = os.path.join(frontend_dest, "Contents/MacOS/frontend")
+    macos_dir = os.path.join(frontend_dest, "Contents/MacOS")
+    binary_name = os.listdir(macos_dir)[0]  # Get the actual binary name
+    frontend_binary = os.path.join(macos_dir, binary_name)
     frontend_link = os.path.join(app_path, "Contents/MacOS/frontend")
     os.symlink(
         os.path.relpath(frontend_binary, os.path.dirname(frontend_link)),
