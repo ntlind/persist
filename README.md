@@ -1,16 +1,17 @@
-# Flashcard App
+# Persist
 
-A modern flashcard application built with Swift and Python, featuring spaced repetition learning and rich text support.
+A modern flashcard application built with Swift and Python.
 
 ## Features
 
-- 📝 Rich text support with markdown
-- 🏷️ Tag-based organization
-- 📊 Learning progress tracking
-- 🔄 Spaced repetition system
-- 📱 Native macOS interface
-- 🖼️ Image support
-- ⌨️ Keyboard-first navigation
+I used to be a frequent Quizlet user, but I grew tired of how cumbersome it was to add and enhance my flashcards. This app offers several improvements that make it more suitable for everyday use:
+
+- Easy editing and modification of flashcards
+- Tag-based organization (where one card can appear in multiple sets)
+- Streak and incorrect/correct ratio tracking and sorting
+- macOS notifications to nudge behavior
+- Image support
+- Keyboard shortcuts
 
 ## Prerequisites
 
@@ -22,68 +23,89 @@ A modern flashcard application built with Swift and Python, featuring spaced rep
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/flashcard-app.git
-   cd flashcard-app
+   git clone https://github.com/ntlind/persist.git
+   cd persist
    ```
 
-2. Run the installation script:
+2. Install dependencies:
    ```bash
-   chmod +x install.sh
-   ./install.sh
+   # For production
+   make install
+
+   # For development (includes pre-commit hooks)
+   make install-dev
    ```
 
-   This will:
-   - Install Homebrew (if not present)
-   - Install Python 3 (if not present)
-   - Set up the SQLite database
-   - Install Python dependencies
-   - Install pre-commit hooks
-   - Set up Swift dependencies
+    Running `make install-dev` will install pre-commit hooks that:
+    - Format Python code with Black
+    - Lint Python code with Flake8
+    - Format Swift code with swift-format
+    - Check for common issues (trailing whitespace, merge conflicts, etc.)
+
 
 ## Running the App
 
-1. Start the backend server:
-   ```bash
-   cd backend
-   uvicorn main:app --reload
-   ```
+### Development
 
-2. Open the frontend project in Xcode:
-   ```bash
-   cd frontend
-   open frontend.xcodeproj
-   ```
-
-3. Build and run the project in Xcode (⌘R)
-
-## Development
-
-### Pre-commit Setup
-
-This project uses pre-commit hooks to maintain code quality. The hooks are automatically installed when you run `install.sh`, but you can also set them up manually:
-
+Run the backend server:
 ```bash
-# Install pre-commit
-pip install pre-commit
-
-# Install the git hooks
-pre-commit install
+make run-dev
 ```
 
-The pre-commit hooks will:
-- Format Python code with Black
-- Lint Python code with Flake8
-- Format Swift code with swift-format
-- Check for common issues (trailing whitespace, merge conflicts, etc.)
-
-You can run the hooks manually on all files:
+On your first run, you need to initialize the database:
 ```bash
-pre-commit run --all-files
+make db-init
 ```
 
-Or on staged files only:
+Open the frontend in Xcode:
 ```bash
-pre-commit run
+make xcode
+# or make build-frontend
 ```
 
-The hooks will also run automatically before each commit. If any hooks fail, the commit will be blocked until the issues are fixed.
+Run tests:
+```bash
+make test
+```
+
+### Building and Debugging
+
+Clean build artifacts:
+```bash
+make clean
+```
+
+Create application bundle:
+```bash
+make bundle
+```
+
+Once bundled, you can run the app from the Finder:
+```bash
+open dist/Persist.app
+```
+
+Debug distribution:
+```bash
+make debug-dist
+```
+
+### All Available Make Commands
+
+| Command | Description |
+|---------|-------------|
+| `run-dev` | Run backend server in development mode with hot reload |
+| `run-prod` | Run backend server in production mode |
+| `install` | Install production dependencies |
+| `install-dev` | Install development dependencies and pre-commit hooks |
+| `test` | Run tests with coverage reporting |
+| `lint` | Run pre-commit hooks on all files |
+| `clean` | Remove build artifacts and cache files |
+| `db-init` | Initialize the database |
+| `db-migrate` | Run database migrations |
+| `db-rollback` | Rollback last database migration |
+| `xcode` | Open the project in Xcode |
+| `build-frontend` | Build the frontend in Release configuration |
+| `bundle` | Create the application bundle |
+| `debug-dist` | Debug the distributed application bundle |
+| `copy-prod-db` | Copy production database to development environment |

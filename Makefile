@@ -4,9 +4,6 @@ run-dev:
 run-prod:
 	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --host 0.0.0.0 --port 2789
 
-generate-certs:
-	cd backend && openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-
 install:
 	cd backend && pip install -r requirements.txt
 
@@ -70,4 +67,4 @@ copy-prod-db:
 	@cp dist/Persist.app/Contents/Resources/backend/data/cards.db backend/data/cards.db
 	@echo "Database copied from production app to backend/data/cards.db"
 
-.PHONY: run-dev run-prod install install-dev test lint clean generate-certs db-init db-migrate db-rollback xcode build-frontend bundle debug-dist copy-prod-db
+.PHONY: run-dev run-prod install install-dev test lint clean db-init db-migrate db-rollback xcode build-frontend bundle debug-dist copy-prod-db
