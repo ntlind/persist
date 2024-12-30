@@ -4,7 +4,7 @@ import SwiftUI
 struct PersistApp: App {
     class AppDelegate: NSObject, NSApplicationDelegate {
         func applicationWillTerminate(_ notification: Notification) {
-            if let url = URL(string: "http://127.0.0.1:8000/shutdown") {
+            if let url = URL(string: "http://127.0.0.1:2789/shutdown") {
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
 

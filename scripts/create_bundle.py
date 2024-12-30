@@ -123,7 +123,7 @@ BACKEND_PID=$!
 # Wait for backend to initialize
 echo "Waiting for backend to start..."
 for i in {1..30}; do
-    if curl -s http://127.0.0.1:8000/health >/dev/null; then
+    if curl -s http://127.0.0.1:2789/health >/dev/null; then
         echo "Backend started successfully with PID $BACKEND_PID"
         break
     fi
@@ -221,7 +221,7 @@ source "$VENV_DIR/bin/activate"
 cd "$DIR"
 
 # Start backend server
-exec python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --log-level info
+exec python -m uvicorn api.main:app --host 127.0.0.1 --port 2789 --log-level info
 """
 
     backend_launcher_path = os.path.join(resources_path, "backend_server")

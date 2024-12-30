@@ -2,7 +2,7 @@ run-dev:
 	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --reload
 
 run-prod:
-	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --host 0.0.0.0 --port 8000
+	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --host 0.0.0.0 --port 2789
 
 generate-certs:
 	cd backend && openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes

@@ -244,7 +244,7 @@ struct CardView: View {
     }
 
     func fetchCards() {
-        guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
+        guard let url = URL(string: "http://127.0.0.1:2789/cards") else { return }
 
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
@@ -292,7 +292,7 @@ struct CardView: View {
             )
         }
 
-        guard let url = URL(string: "http://127.0.0.1:8000/add_cards") else { return }
+        guard let url = URL(string: "http://127.0.0.1:2789/add_cards") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -784,7 +784,7 @@ struct TagDetailView: View {
                 .map(String.init)
         }
 
-        guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
+        guard let url = URL(string: "http://127.0.0.1:2789/cards") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -1094,7 +1094,7 @@ struct CardCreatorView: View {
             )
         }
 
-        guard let url = URL(string: "http://127.0.0.1:8000/add_cards") else { return }
+        guard let url = URL(string: "http://127.0.0.1:2789/add_cards") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -1297,7 +1297,7 @@ struct CardEditorView: View {
             )
         }
 
-        guard let url = URL(string: "http://127.0.0.1:8000/cards") else { return }
+        guard let url = URL(string: "http://127.0.0.1:2789/cards") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
