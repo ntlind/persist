@@ -1,6 +1,6 @@
 # Persist
 
-A modern flashcard application built with Swift and Python.
+A modern Anki flashcard application built with Swift and Python.
 
 ## Features
 
