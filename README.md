@@ -2,7 +2,7 @@
 
 A modern Anki flashcard application built with Swift and Python.
 
-## Features
+## Overview
 
 I used to be a frequent Quizlet user, but I grew tired of how cumbersome it was to add to and enhance my flashcards. This app offers several improvements that make it more suitable for everyday use:
 
