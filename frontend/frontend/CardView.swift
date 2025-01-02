@@ -1,6 +1,7 @@
 import SwiftUI
 import UserNotifications
 
+// MARK: - Models
 struct Card: Codable, Identifiable {
     let id: Int
     var front: String
@@ -27,6 +28,13 @@ struct Answers: Codable {
     var incorrect: Int
 }
 
+struct NewCard: Encodable {
+    let front: String
+    let back: String
+    let tags: [String]
+}
+
+// MARK: - Main Views
 struct CardView: View {
     @State private var allCards: [Card] = []
     @State private var cards: [Card] = []
@@ -1025,12 +1033,6 @@ struct ViewSizeKey: PreferenceKey {
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
         value = nextValue()
     }
-}
-
-struct NewCard: Encodable {
-    let front: String
-    let back: String
-    let tags: [String]
 }
 
 struct CardCreatorView: View {
