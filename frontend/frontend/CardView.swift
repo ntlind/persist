@@ -167,9 +167,12 @@ struct CardView: View {
                         .replacingOccurrences(of: " ", with: "_")
                     TagDetailView(
                         cards: cards.filter { card in
-                            let formattedTags = formattedTag.split(separator: ",").map(String.init)
-                            return formattedTags.allSatisfy { tag in
-                                card.tags.contains(tag.trimmingCharacters(in: .whitespaces))
+                            let formattedTags = formattedTag.split(separator: ",")
+                                .map { $0.trimmingCharacters(in: .whitespaces) }
+                            return formattedTags.allSatisfy { searchTag in
+                                card.tags.contains { tag in
+                                    tag.trimmingCharacters(in: .whitespaces) == searchTag
+                                }
                             }
                         },
                         editTextTags: $editTextTags
