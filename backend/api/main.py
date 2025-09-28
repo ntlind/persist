@@ -7,6 +7,21 @@ import os
 app = FastAPI()
 
 
+@app.get("/")
+async def root():
+    """Root endpoint with API information"""
+    return {
+        "message": "Persist Flashcard API",
+        "version": "1.0.0",
+        "endpoints": {
+            "cards": "/cards",
+            "add_cards": "/add_cards",
+            "health": "/health",
+            "docs": "/docs",
+        },
+    }
+
+
 @app.get("/cards")
 async def get_cards():
     """Get all flashcards from the system.
@@ -34,6 +49,8 @@ async def get_cards():
             status_code=400,
             detail="Invalid JSON format in cards data file",
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/cards")
