@@ -4,3 +4,7 @@
 *.coverage
 build/*
 dist/*
+
+# UV
+.venv
+uv.lock

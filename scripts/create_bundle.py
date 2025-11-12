@@ -98,8 +98,8 @@ echo "$(date): Application started"
 echo "App directory: $APP_DIR"
 echo "Resources directory: $RESOURCES_DIR"
 
-# Ensure data directory exists
-DATA_DIR="$RESOURCES_DIR/data"
+# Ensure data directory exists (backend expects it at backend/data)
+DATA_DIR="$RESOURCES_DIR/backend/data"
 mkdir -p "$DATA_DIR"
 echo "Data directory: $DATA_DIR"
 
@@ -229,9 +229,13 @@ set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 VENV_DIR="$DIR/backend/venv"
+BACKEND_DIR="$DIR/backend"
 
 # Activate virtual environment
 source "$VENV_DIR/bin/activate"
+
+# Set PYTHONPATH so Python can find the api and core modules
+export PYTHONPATH="$BACKEND_DIR"
 
 # Set working directory
 cd "$DIR"

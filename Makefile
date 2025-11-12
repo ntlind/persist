@@ -1,23 +1,22 @@
 run-dev:
-	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --reload --port 2789
+	cd backend && PYTHONPATH=$(PWD)/backend uv run uvicorn api.main:app --reload --port 2789
 
 run-prod:
-	cd backend && PYTHONPATH=$(PWD)/backend uvicorn api.main:app --host 0.0.0.0 --port 2789
+	cd backend && PYTHONPATH=$(PWD)/backend uv run uvicorn api.main:app --host 0.0.0.0 --port 2789
 
 install:
-	cd backend && pip install -r requirements.txt
+	cd backend && uv sync --no-install-project
 
 install-dev:
-	cd backend && pip install -r requirements.txt
-	pip install pre-commit
-	pre-commit install
+	cd backend && uv sync --no-install-project --extra dev
+	cd backend && uv run pre-commit install
 
 test:
-	cd backend && PYTHONPATH=$(PWD)/backend python -m pytest -v --cov=api --cov=core --cov-report=term-missing --cov-report=html --cov-config=.coveragerc tests/ --cov-fail-under=80
+	cd backend && PYTHONPATH=$(PWD)/backend uv run pytest -v --cov=api --cov=core --cov-report=term-missing --cov-report=html --cov-config=.coveragerc tests/ --cov-fail-under=80
 	$(MAKE) clean
 
 lint:
-	pre-commit run --all-files
+	cd backend && uv run pre-commit run --all-files
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -r {} +
@@ -34,13 +33,13 @@ clean:
 	find . -type d -name "build" -exec rm -r {} +
 
 db-init:
-	cd backend && PYTHONPATH=$(PWD)/backend python scripts/init_db.py
+	cd backend && PYTHONPATH=$(PWD)/backend uv run python scripts/init_db.py
 
 db-migrate:
-	cd backend && PYTHONPATH=$(PWD)/backend alembic upgrade head
+	cd backend && PYTHONPATH=$(PWD)/backend uv run alembic upgrade head
 
 db-rollback:
-	cd backend && PYTHONPATH=$(PWD)/backend alembic downgrade -1
+	cd backend && PYTHONPATH=$(PWD)/backend uv run alembic downgrade -1
 
 xcode:
 	open frontend/Persist.xcodeproj
