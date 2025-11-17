@@ -66,4 +66,13 @@ copy-prod-db:
 	@cp dist/Persist.app/Contents/Resources/backend/data/cards.db backend/data/cards.db
 	@echo "Database copied from production app to backend/data/cards.db"
 
-.PHONY: run-dev run-prod install install-dev test lint clean db-init db-migrate db-rollback xcode build-frontend bundle debug-dist copy-prod-db
+copy-app-db:
+	@if [ ! -d "backend/data" ]; then mkdir -p backend/data; fi
+	@if [ ! -f "/Applications/Persist.app/Contents/Resources/backend/data/cards.db" ]; then \
+		echo "Error: Database not found at /Applications/Persist.app/Contents/Resources/backend/data/cards.db"; \
+		exit 1; \
+	fi
+	@cp /Applications/Persist.app/Contents/Resources/backend/data/cards.db backend/data/cards.db
+	@echo "Database copied from Applications folder to backend/data/cards.db"
+
+.PHONY: run-dev run-prod install install-dev test lint clean db-init db-migrate db-rollback xcode build-frontend bundle debug-dist copy-prod-db copy-app-db
